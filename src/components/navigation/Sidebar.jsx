@@ -83,11 +83,13 @@ function Sidebar() {
           {/* Menu items section */}
           <div className="flex-grow flex flex-col items-center py-5 space-y-6">
             <MenuItem link="/dashboard" Icon={Squares2X2Icon}/>
-            <MenuItem link="/sprints" Icon={CalendarIcon}/>
+            <MenuItem link="/user-management" Icon={Squares2X2Icon}/>
+            <MenuItem link="/chat" Icon={Squares2X2Icon}/>
+            {/* <MenuItem link="/sprints" Icon={CalendarIcon}/>
             <MenuItem link="/test-plans" Icon={TableCellsIcon}/>
             <MenuItem link="/releases" Icon={DocumentTextIcon}/>
             <MenuItem link="/projects" Icon={Square3Stack3DIcon}/>
-            <MenuItem link="/profile" Icon={UsersIcon}/>
+            <MenuItem link="/profile" Icon={UsersIcon}/> */}
 
             <div className="flex flex-col items-center ">
               {!loading ? (
