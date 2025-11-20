@@ -79,6 +79,8 @@ function Sidebar() {
           />
         </div>
 
+        {/* test */}
+
         <div className="flex flex-col h-full justify-between">
           {/* Menu items section */}
           <div className="flex-grow flex flex-col items-center py-5 space-y-6">
