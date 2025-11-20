@@ -1,0 +1,19 @@
+import React from 'react'
+import {PowerBIReport} from "../../components/PowerBIReport.jsx";
+
+function DashboardContentPage() {
+
+    // const {data} = useFetchPowerBIToken("8cbfc561-b26e-4dfb-a281-24fa923e2a5b", "3626db8d-ebe6-4ad1-b607-9d5ea78c1793")
+
+  return (
+      <div>
+          {/*<PowerBIReport*/}
+          {/*    accessToken={'H4sIAAAAAAAEACWTx66DVgBE_-VtiQQXTIuUBb2ZDqbsjOmdC6ZF-fe8KPvZzDkzf_8476uf3vnPnz9DwexDfhTZ3ba6AabU4KEBSuxtdcwHQL0MXjdbnxFqiF1WyfYdkUoWbW6bUUa_jZ9xVuWaLGrQx1FQqgWF6doTabqJKxNjUYsl1X-jpVXYjP6kkEmuU6UvJPgwEUQPeehyJ6AUO-Iq6rYww1hlfH7JATjnVe2rj4LIxVZkWe8WsdcfG-5PFwwIlWUfCxGvQ9poFKc2k_Fi96eFiLMIwCmWiapsjVkjXKERsJH55wnEoaXhVUhgqXC7WK8BrccL2FJGKTlpkig9st2sm7HYqekB1gvbaeTZ1CnTDPLleTfAH4_WZaX629e5oDgss5DuteB6F-sea6kGCKarYvLK9lwHV3b3hFQ73dbrNdlMu9QwXFHab2QMvZvuLjuz5u8yCNeTcr4grBZ9JEE55fybIaCWXDpvHw-hGpFXnz0H10JVLAqMgalHtykudwl0Lkq8Vte6FQiMcaRKwJteMOuQX0odkY3l8MvJoxm6tiyl15m1h1S3dCPScZI9D7zD5b6eaJI0VzaIhPiTG1l5z7PLoh0qMM3WNbvmL3lVA3eevS6bUh8iTJp-BqHmmre-altn5l9dPhMzESRH5GSj8azEf3OI3xvU4gUPnEQExpzUruU3ApMxOwrbMKF9qlByd-B7QmYGAiM-CCSFMDEg07behwq5Nh71BAf00etD5dITjDvnUQtz99rQx11V6urlFqsZBK9jj8wgHIufsGWj7gsLEYdKWapNx6VeOE3TeGRyM5ASXV4QFFS8JsUUTJydnSyb5Ty744TPgcQDhv70i2BqLyNde08h3cyo_R1jbj0d7O97iItCNWEG-lAkvTvnPu_ZPtguEQrYzvPQxgs58hhKSIfJ_fXXzx8_ArzmbTKK6_dmHoCyL78DUyC-TKRuIs69zPckLSvi_AqokAuS7fg5IzXZ7oYNfOcTPpZ8TLzutzeEtTE8OT3qctPVapIw5wNNuUSVOflqZpfGcDjFr85HUogMFZ7KU77PcRg5Qb829Y2_P_Z3qjX_jjLN7ING74PLDClxX1aH2TuPQmTB5_W6kOla6ngSf1DJCNl8x6nckEUVy6vDJfbG7URnVecuZwptbBtNG-xoqJPl-ztn9vG432NOpDV4znHqPCXRVtsgjmcNkKQIGKfr0gKEVnPoxYUNjheTbeRqX3QIzPQqKmN5ntY3xDaK0zZJ-gqSZbQRoCVXeoVJBl4uqwTd-roycCfVLA3u_5ivuS6g9vqlLGj6pr6Wk2UVnFLIkdyoHf4vw2-q8b19YfEbu7-Pq4e6IvVilhdpdZZGcE27amz3kcG3jiyFJHt7lcv2KtM8rzOEN2eKG9AX5fVCqpqfb9-mrtaefb-KPpr3FQ2XvkzdVhDCcW_Xfg0ZVw6zF2eU9PztpFzmz9hkaWEimYsJZ9ZsHRsiD89Fuu_mXAF7YpsxAfEA6FlVjIprj0m0cBPMs0Vs3IWKIQNzfUJ8340LVedmXBfrD7hpnE4v8pzZ5yOvxYYhItbCc7stSlspXSsf1Ri2ausvpheik5tj3qY8M0cIyu5d98t8Cdkq9rzgoyY26ZQcBe-63nzrIoLlmfl8crjhdowKqQZ2vqAWT3Cvz9rQlwPJcJ8n5dzhBqb_ZPzzL87v1CVaBgAA.eyJjbHVzdGVyVXJsIjoiaHR0cHM6Ly9XQUJJLUFVU1RSQUxJQS1FQVNULUItUFJJTUFSWS1yZWRpcmVjdC5hbmFseXNpcy53aW5kb3dzLm5ldCIsImV4cCI6MTc0MTE4NDc5MiwiYWxsb3dBY2Nlc3NPdmVyUHVibGljSW50ZXJuZXQiOnRydWV9'}*/}
+          {/*    embedUrl={"https://app.powerbi.com/reportEmbed?reportId=bc025b41-5b35-4f9d-a80e-e2a9776ec67a&groupId=7b3dd0fe-ac8e-4b6b-971e-5874078c5813&w=2&config=eyJjbHVzdGVyVXJsIjoiaHR0cHM6Ly9XQUJJLUFVU1RSQUxJQS1FQVNULUItUFJJTUFSWS1yZWRpcmVjdC5hbmFseXNpcy53aW5kb3dzLm5ldCIsImVtYmVkRmVhdHVyZXMiOnsidXNhZ2VNZXRyaWNzVk5leHQiOnRydWV9fQ%3d%3d"}*/}
+          {/*    reportId={'bc025b41-5b35-4f9d-a80e-e2a9776ec67a'}*/}
+          {/*/>*/}
+      </div>
+  )
+}
+
+export default DashboardContentPage;

@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* custom-scrollbar.css */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #b1b1b1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #808080;
+}
+
+@layer components {
+    
+  
+    .btn-primary {
+      @apply px-4 py-2 bg-primary-pink text-white rounded hover:bg-pink-600 w-3/4 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed;
+    }
+  
+    .btn-secondary {
+      @apply px-4 py-2 text-cancel-button rounded w-1/4 border border-cancel-button cursor-pointer disabled:cursor-not-allowed;
+    }
+  
+    .btn-login {
+      @apply w-full py-3 rounded-lg bg-primary-pink text-white font-bold cursor-pointer;
+    }
+
+    .user-details-left-column-detail-box {
+      @apply w-full h-8 bg-dashboard-bgc rounded-md border border-border-color;
+    }
+    
+
+  }
+
+  
