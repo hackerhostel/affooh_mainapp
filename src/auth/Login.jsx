@@ -1,17 +1,15 @@
-import React, { useRef, useState } from 'react';
-import { signIn } from 'aws-amplify/auth';
+import React, {useRef, useState} from 'react';
+import {signIn} from 'aws-amplify/auth';
 import useValidation from "../utils/use-validation.jsx";
 import FormInput from "../components/FormInput.jsx";
-import { useToasts } from "react-toast-notifications";
-import { useHistory, Link, useLocation } from "react-router-dom";
-import { useDispatch } from "react-redux";
+import {Link, useHistory, useLocation} from "react-router-dom";
+import {useDispatch} from "react-redux";
 import LoginImage from '../images/login.png';
-import { LoginSchema } from "../state/domains/authModels.js";
+import {LoginSchema} from "../state/domains/authModels.js";
 import {doGetWhoAmI} from "../state/slice/authSlice.js";
-import Spinner from "../components/Spinner.jsx";
+import {toast} from "react-toastify";
 
 const Login = () => {
-  const { addToast } = useToasts();
   const dispatch = useDispatch();
   const [enabled, setEnabled] = useState(true);
   const history = useHistory();
@@ -40,8 +38,6 @@ const Login = () => {
       return;
     }
 
-    
-
     try {
       const response = await signIn(loginDetails)
 
@@ -51,11 +47,11 @@ const Login = () => {
       }
 
       dispatch(doGetWhoAmI())
-      addToast('logged in Successfully', { appearance: 'success', autoDismiss: true });
+      toast.success('logged in Successfully')
       formRef.current.reset();
       history.push('/dashboard');
     } catch (e) {
-      addToast(e.message, { appearance: 'error' });
+      toast.error(e.message)
     } finally {
       setLoading(false);
     }

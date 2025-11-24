@@ -1,10 +1,9 @@
-import React, { useState } from "react";
-import { EllipsisVerticalIcon } from "@heroicons/react/24/outline";
+import React, {useState} from "react";
+import {EllipsisVerticalIcon} from "@heroicons/react/24/outline";
 import ConfirmationDialog from "../../components/ConfirmationDialog.jsx";
-import { useToasts } from "react-toast-notifications";
+import {toast} from "react-toastify";
 
 const UserManagementListPage = ({ onDocumentSelect }) => {
-  const { addToast } = useToasts();
 
   // Dummy document list
   const [documents, setDocuments] = useState([
@@ -36,7 +35,7 @@ const getColorClass = () => {
   const handleConfirmDelete = () => {
     if (selectedDoc) {
       setDocuments((prev) => prev.filter((d) => d.id !== selectedDoc.id));
-      addToast("Document deleted successfully!", { appearance: "success" });
+      toast.success(`Document deleted successfully!`);
     }
     setIsDialogOpen(false);
   };

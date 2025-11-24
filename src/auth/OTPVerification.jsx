@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
-import { doVerifyOTP } from "../state/slice/registerSlice.js";
-import { useDispatch } from "react-redux";
-import { useToasts } from "react-toast-notifications";
-import { useHistory, useLocation } from "react-router-dom";
-import { resetPassword } from "aws-amplify/auth";
+import React, {useEffect, useRef, useState} from "react";
+import {doVerifyOTP} from "../state/slice/registerSlice.js";
+import {useDispatch} from "react-redux";
+import {useHistory, useLocation} from "react-router-dom";
+import {resetPassword} from "aws-amplify/auth";
+import {toast} from "react-toastify";
 
 const OTPVerification = () => {
   const history = useHistory();
-  const { addToast } = useToasts();
   const dispatch = useDispatch();
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
@@ -97,9 +96,7 @@ const OTPVerification = () => {
 
   const handleContinue = async () => {
     if (otp.some((digit) => digit === "")) {
-      addToast("Please enter the complete verification code", {
-        appearance: "error",
-      });
+      toast.error('Please enter the complete verification code')
       return;
     }
 
@@ -113,7 +110,7 @@ const OTPVerification = () => {
           email: email,
           code: otpCode,
         });
-        addToast("Verification successful", { appearance: "success" });
+        toast.success('Verification successful')
       } else {
         // For registration flow - verify OTP and redirect to login
         await dispatch(
@@ -124,14 +121,10 @@ const OTPVerification = () => {
         );
 
         history.push("/login");
-        addToast("Account verification successful. Please login.", {
-          appearance: "success",
-        });
+        toast.success('Account verification successful. Please login.')
       }
     } catch (error) {
-      addToast(error.message || "Verification failed. Please try again.", {
-        appearance: "error",
-      });
+      toast.error('error.message || "Verification failed. Please try again."')
     } finally {
       setLoading(false);
     }
@@ -159,17 +152,10 @@ const OTPVerification = () => {
           );
         }
 
-        addToast("New verification code has been sent", {
-          appearance: "success",
-        });
+        toast.success('New verification code has been sent')
         startTimer();
       } catch (error) {
-        addToast(
-          "Failed to resend code: " + (error.message || "Unknown error"),
-          {
-            appearance: "error",
-          }
-        );
+        toast.error("Failed to resend code: " + (error.message || "Unknown error"))
       } finally {
         setLoading(false);
       }

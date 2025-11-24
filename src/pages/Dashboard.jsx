@@ -1,24 +1,17 @@
 import {Redirect, Route, Switch} from "react-router-dom";
 import Sidebar from "../components/navigation/Sidebar.jsx";
 import Header from "../components/navigation/Header.jsx";
-import ProjectLayout from "./project-page/index.jsx";
-import UserLayout from "./user-page/index.jsx";
-import UnderConstruction from "../components/UnderConstruction.jsx";
 import {useDispatch, useSelector} from "react-redux";
 import React, {useEffect} from "react";
 import {doGetWhoAmI, selectInitialUserDataError, selectInitialUserDataLoading} from "../state/slice/authSlice.js";
 import LoadingPage from "./LoadingPage.jsx";
 import ServiceDownPage from "./ServiceDownPage.jsx";
-import TestPlanLayout from "./test-plan-page/index.jsx";
 import DashboardLayout from "./dashboard-page/index.jsx";
-import ReleaseLayout from "./release-page/index.jsx";
-import SprintLayout from "./sprint-page/index.jsx";
-import SettingLayout from "./setting-page/index.jsx";
+// import SettingLayout from "./setting-page/index.jsx";
 import UserManagementLayout from "./user-management/index.jsx";
 import ChatLayout from "./chat/index.jsx";
 import {doGetProjectBreakdown, selectSelectedProject} from "../state/slice/projectSlice.js";
 import {isNotEmptyObj} from "../utils/commonUtils.js";
-import EditTaskPage from "../pages/sprint-page/editTask/index.jsx"
 import {doGetMasterData, selectInitialDataError, selectInitialDataLoading} from "../state/slice/appSlice.js";
 
 const Dashboard = () => {
@@ -63,41 +56,9 @@ const Dashboard = () => {
               <ChatLayout />
             </Route>
 
-            <Route path="/projects">
-              <ProjectLayout/>
-            </Route>
-
-            <Route path="/profile">
-              <UserLayout />
-            </Route>
-
-            <Route path="/test-plans/:test_plan_id">
-              <TestPlanLayout/>
-            </Route>
-
-            <Route path="/test-plans">
-              <TestPlanLayout/>
-            </Route>
-
-            <Route path="/releases">
-              <ReleaseLayout/>
-            </Route>
-
-            <Route path="/settings">
-              <SettingLayout/>
-            </Route>
-
-            <Route path="/sprints">
-              <SprintLayout />
-            </Route>
-
-            <Route path="/sprints/:sprint_id">
-              <SprintLayout />
-            </Route>
-
-            <Route path="/task/:code">
-              <EditTaskPage />
-            </Route>
+            {/*<Route path="/settings">*/}
+            {/*  <SettingLayout/>*/}
+            {/*</Route>*/}
 
             <Route exact path="/">
               <Redirect

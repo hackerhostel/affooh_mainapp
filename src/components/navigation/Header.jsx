@@ -1,13 +1,10 @@
-import React, {Fragment, useCallback, useState} from "react";
-import {Menu, Transition} from "@headlessui/react";
+import React, {useCallback, useState} from "react";
 import {useDispatch, useSelector} from "react-redux";
 import {BellIcon} from "@heroicons/react/24/outline";
 import FormSelect from "../FormSelect.jsx";
 import {doSwitchProject, selectProjectList, selectSelectedProject} from "../../state/slice/projectSlice.js";
-import {signOut} from 'aws-amplify/auth';
 import {selectUser} from "../../state/slice/authSlice.js";
 import Notification from "./NotificationPopup.jsx"
-import HeaderTaskCreateComponent from "../task/create/HeaderTaskCreateComponent.jsx";
 
 const Header = () => {
   const dispatch = useDispatch();
@@ -89,7 +86,6 @@ const Header = () => {
           </div>
         </div>
       </div>
-      <HeaderTaskCreateComponent isOpen={newHeaderTaskModalOpen} onClose={closeHeaderCreateTaskModal}/>
     </div>
   );
 };

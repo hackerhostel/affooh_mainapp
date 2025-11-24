@@ -8,7 +8,7 @@ import {RegisterSchema} from "../state/domains/authModels.js";
 import {confirmSignIn} from "aws-amplify/auth";
 import {doGetWhoAmI} from "../state/slice/authSlice.js";
 import {fetchUserInvitedOrganization, registerInvitedUser} from "../state/slice/registerSlice.js";
-import {useToasts} from "react-toast-notifications";
+import {toast} from "react-toastify";
 
 const RegisterForm = () => {
   const { addToast } = useToasts();
@@ -69,13 +69,13 @@ const RegisterForm = () => {
         });
 
         if (isSignedIn) {
-          addToast('Successfully signed in and set new password', {appearance: 'success', autoDismiss: true});
+          toast.success(`Successfully signed in and set new password'`);
           dispatch(doGetWhoAmI());
           dispatch(registerInvitedUser(registerDetails))
           history.push('/dashboard');
         }
       } catch (error) {
-        addToast('Error setting new password:', {appearance: 'error'});
+        toast.error('Error setting new password:');
       }
     } catch (e) {
       addToast(e.message, {appearance: 'error'});
