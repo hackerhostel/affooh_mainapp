@@ -7,7 +7,7 @@ import {doGetWhoAmI, selectInitialUserDataError, selectInitialUserDataLoading} f
 import LoadingPage from "./LoadingPage.jsx";
 import ServiceDownPage from "./ServiceDownPage.jsx";
 import DashboardLayout from "./dashboard-page/index.jsx";
-// import SettingLayout from "./setting-page/index.jsx";
+import SettingLayout from "./setting-page/index.jsx";
 import UserManagementLayout from "./user-management/index.jsx";
 import ChatLayout from "./chat/index.jsx";
 import {doGetProjectBreakdown, selectSelectedProject} from "../state/slice/projectSlice.js";
@@ -56,9 +56,9 @@ const Dashboard = () => {
               <ChatLayout />
             </Route>
 
-            {/*<Route path="/settings">*/}
-            {/*  <SettingLayout/>*/}
-            {/*</Route>*/}
+            <Route path="/settings">
+              <SettingLayout/>
+            </Route>
 
             <Route exact path="/">
               <Redirect

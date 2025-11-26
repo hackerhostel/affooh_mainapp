@@ -1,23 +1,13 @@
-import React, {useCallback, useState} from "react";
-import {useDispatch, useSelector} from "react-redux";
+import React, {useState} from "react";
+import {useSelector} from "react-redux";
 import {BellIcon} from "@heroicons/react/24/outline";
-import FormSelect from "../FormSelect.jsx";
-import {doSwitchProject, selectProjectList, selectSelectedProject} from "../../state/slice/projectSlice.js";
 import {selectUser} from "../../state/slice/authSlice.js";
 import Notification from "./NotificationPopup.jsx"
+import AffoohLogo from "../../assets/affooh_logo.png";
 
 const Header = () => {
-  const dispatch = useDispatch();
-  const selectedProject = useSelector(selectSelectedProject);
-  const projectList = useSelector(selectProjectList);
   const userDetails = useSelector(selectUser);
-  const [loading, setLoading] = useState(false);
   const [isOpenPopUp, setIsOpenPopUp] = useState(false);
-  const [newHeaderTaskModalOpen, setNewHeaderTaskModalOpen] = useState(false);
-
-  const handleChange = (e, value) => {
-    dispatch(doSwitchProject(Number(value)));
-  };
 
   const getInitials = (name) => {
     if (!name) return "";
@@ -25,14 +15,6 @@ const Header = () => {
     const initials = nameParts.map((part) => part.charAt(0).toUpperCase()).join("");
     return initials;
   };
-
-
-  const getProjectOptions = useCallback(() => {
-    return projectList.map((project) => ({
-      value: project.id,
-      label: project.name,
-    }));
-  }, [projectList]);
 
   const openPopUp = () =>{
     setIsOpenPopUp((prevState) => !prevState);
@@ -42,33 +24,21 @@ const Header = () => {
     setIsOpenPopUp(false);
   }
 
-  const closeHeaderCreateTaskModal = () => setNewHeaderTaskModalOpen(false)
-
   return (
     <div className="flex justify-between h-16 w-full">
       {/* Left Section */}
       <div className="py-3 px-4 w-72">
-        <FormSelect
-          name="project"
-          showLabel={false}
-          formValues={{ project: selectedProject?.id }}
-          placeholder="Select a project"
-          options={getProjectOptions()}
-          onChange={handleChange}
+        <img
+            src={AffoohLogo}
+            alt="Affooh Logo"
+            className="h-[2.5rem] object-contain"
         />
       </div>
 
       {/* Right Section */}
       <div className="flex items-center mr-6 space-x-3">
         <div>
-          <button
-              className="w-24 h-10 text-white rounded-lg border border-primary-pink bg-primary-pink cursor-pointer disabled:cursor-not-allowed disabled:text-gray-300 disabled:border-gray-300"
-              onClick={() => setNewHeaderTaskModalOpen(true)}>
-            New Task
-          </button>
-        </div>
-        <div>
-          <BellIcon onClick={openPopUp} className="w-7 h-7 m-3 cursor-pointer"/>
+          <BellIcon onClick={openPopUp} className="w-7 h-7 cursor-pointer"/>
         </div>
 
         <div className="z-50">
