@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import { confirmResetPassword } from "aws-amplify/auth";
 import { useHistory, useLocation } from "react-router-dom";
-import { useToasts } from "react-toast-notifications";
 import FormInput from "../components/FormInput.jsx";
 import useValidation from "../utils/use-validation.jsx";
 import * as yup from "yup";
+import {toast} from "react-toastify";
 
 const ResetPasswordSchema = yup.object({
   newPassword: yup
@@ -20,7 +20,6 @@ const ResetPasswordSchema = yup.object({
 const ResetPassword = () => {
   const history = useHistory();
   const location = useLocation();
-  const { addToast } = useToasts();
   const email = location.state?.email;
   const verificationCode = location.state?.code;
   const formRef = useRef(null);
@@ -64,13 +63,10 @@ const ResetPassword = () => {
         newPassword: resetDetails.newPassword,
       });
 
-      addToast("Password has been reset successfully", {
-        appearance: "success",
-        autoDismiss: true,
-      });
+      toast.success('Password has been reset successfully')
       history.push("/login");
     } catch (error) {
-      addToast(error.message, { appearance: "error" });
+      toast.success(error.message)
     } finally {
       setLoading(false);
     }

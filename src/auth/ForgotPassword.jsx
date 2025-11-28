@@ -1,14 +1,13 @@
-import React, { useRef, useState } from "react";
-import { Link, useHistory } from "react-router-dom";
-import { resetPassword } from "aws-amplify/auth";
+import React, {useRef, useState} from "react";
+import {Link, useHistory} from "react-router-dom";
+import {resetPassword} from "aws-amplify/auth";
 import FormInput from "../components/FormInput.jsx";
 import useValidation from "../utils/use-validation.jsx";
-import { ForgotPasswordSchema } from "../state/domains/authModels.js";
-import { useToasts } from "react-toast-notifications";
+import {ForgotPasswordSchema} from "../state/domains/authModels.js";
+import {toast} from "react-toastify";
 
 const ForgotPassword = () => {
   const history = useHistory();
-  const { addToast } = useToasts();
   const [forgotPasswordDetails, setForgotPasswordDetails] = useState({
     email: "",
   });
@@ -41,17 +40,14 @@ const ForgotPassword = () => {
         username: forgotPasswordDetails.email,
       });
 
-      addToast("Verification code has been sent to your email", {
-        appearance: "success",
-        autoDismiss: true,
-      });
+      toast.success('Verification code has been sent to your email')
       // Redirect to OTP verification page with email and reset password flow indicator
       history.push("/otp-verification", {
         email: forgotPasswordDetails.email,
         isPasswordReset: true,
       });
     } catch (error) {
-      addToast(error.message, { appearance: "error" });
+      toast.error(error.message)
     } finally {
       setLoading(false);
     }

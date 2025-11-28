@@ -1,18 +1,16 @@
-import React, { useRef, useState } from "react";
-import { useDispatch } from "react-redux";
-import { useLocation, Link, useHistory } from "react-router-dom";
-import { useToasts } from "react-toast-notifications";
-
+import React, {useRef, useState} from "react";
+import {useDispatch} from "react-redux";
+import {Link, useHistory, useLocation} from "react-router-dom";
+import {toast} from "react-toastify";
 import FormInput from "../components/FormInput";
 import LoginImage from "../images/register.jpg";
-import { RegisterSchema } from "../state/domains/authModels";
-import { doRegisterUser } from "../state/slice/registerSlice";
+import {RegisterSchema} from "../state/domains/authModels";
+import {doRegisterUser} from "../state/slice/registerSlice";
 import useValidation from "../utils/use-validation";
 
 function Register() {
   const dispatch = useDispatch();
   const history = useHistory();
-  const { addToast } = useToasts(); // Add toast notifications
   const [registerDetails, setRegisterDetails] = useState({
     username: "",
     organization: "",
@@ -41,7 +39,7 @@ function Register() {
     }
 
     if (registerDetails.password !== registerDetails.confirmPassword) {
-      addToast("Passwords do not match", { appearance: "error" });
+      toast.error('Passwords do not match');
       return;
     }
 
@@ -53,13 +51,7 @@ function Register() {
       await dispatch(doRegisterUser(registerDetails));
 
       // Instead of redirecting to login, redirect to OTP verification
-      addToast(
-        "Registration successful! Please verify your email with the OTP sent.",
-        {
-          appearance: "success",
-          autoDismiss: true,
-        }
-      );
+      toast.error('Registration successful! Please verify your email with the OTP sent.');
 
       // Redirect to OTP verification page with email
       history.push("/otp-verification", {
@@ -67,9 +59,7 @@ function Register() {
         isPasswordReset: false, // Explicitly mark this is not password reset flow
       });
     } catch (error) {
-      addToast(error.message || "Registration failed. Please try again.", {
-        appearance: "error",
-      });
+      toast.error('Registration successful! Please verify your email with the OTP sent.')
     } finally {
       setLoading(false);
     }
