@@ -1,15 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 
-/**
- * Dynamic Role Permissions Editor Component
- *
- * This component renders a dynamic UI for managing role permissions based on a template.
- * It supports toggling modules on/off and managing individual permissions within each module.
- *
- * @param {Object} template - The template object from the API containing modules and permissions structure
- * @param {Object} initialPermissions - Initial permission values (for edit mode)
- * @param {Function} onChange - Callback function called when permissions change
- */
 const RolePermissionsEditor = ({ template, initialPermissions = {}, onChange }) => {
   const [enabledModules, setEnabledModules] = useState([]);
   const [permissions, setPermissions] = useState({});
@@ -163,7 +153,7 @@ const RolePermissionsEditor = ({ template, initialPermissions = {}, onChange }) 
             return (
               <div
                 key={moduleName}
-                className={`flex items-center justify-between p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                className={`flex items-center gap-2 justify-between p-4 border-2 rounded-lg cursor-pointer transition-all duration-200 min-w-60 ${
                   isEnabled
                     ? 'border-primary-pink bg-pink-50 shadow-sm'
                     : 'border-gray-300 bg-white hover:border-gray-400 hover:shadow-sm'

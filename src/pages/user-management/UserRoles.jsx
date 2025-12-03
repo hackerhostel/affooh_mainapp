@@ -13,14 +13,16 @@ import {
     selectRoles,
 } from '../../state/slice/roleSlice';
 import CreateUserRole from "./CreateUserRole.jsx";
+import EditUserRole from "./EditUserRole.jsx";
 
 const UserRoles = () => {
     const dispatch = useDispatch();
-    const history = useHistory();
 
     const [isRoleCreateOpen, setIsRoleCreateOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [roleToDelete, setRoleToDelete] = useState(null);
+    const [isRoleEditOpen, setIsRoleEditOpen] = useState(false);
+    const [roleToEdit, setRoleToEdit] = useState(null);
 
     const roles = useSelector(selectRoles);
     const loading = useSelector(selectIsRolesLoading);
@@ -32,8 +34,8 @@ const UserRoles = () => {
     }, [dispatch]);
 
     const handleEdit = (roleId) => {
-        console.log('Navigating to edit user role:', roleId);
-        history.push(`/settings/user-roles/edit/${roleId}`);
+        setRoleToEdit(roleId)
+        setIsRoleEditOpen(true)
     };
 
     const handleDeleteClick = (role) => {
@@ -57,6 +59,11 @@ const UserRoles = () => {
     const handleDeleteCancel = () => {
         setDeleteDialogOpen(false);
         setRoleToDelete(null);
+    };
+
+    const handleEditCancel = () => {
+        setRoleToEdit(null)
+        setIsRoleEditOpen(false)
     };
 
     if (loading) {
@@ -157,6 +164,7 @@ const UserRoles = () => {
                 message={`Are you sure you want to delete "${roleToDelete?.name}"? This action cannot be undone.`}
             />
             <CreateUserRole isOpen={isRoleCreateOpen} onClose={() => setIsRoleCreateOpen(false)}/>
+            <EditUserRole isOpen={isRoleEditOpen} onClose={handleEditCancel} roleId={roleToEdit}/>
         </div>
     );
 };

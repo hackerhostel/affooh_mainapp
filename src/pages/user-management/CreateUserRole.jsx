@@ -70,8 +70,7 @@ const CreateUserRole = ({isOpen, onClose}) => {
         try {
             await dispatch(doCreateRole(roleData)).unwrap();
             toast.success('User role created successfully!')
-            // Navigate back to user roles list on success
-            history.push('/settings?view=userRoles');
+            onClose()
         } catch (error) {
             console.error('Error creating role:', error);
             console.error('Error details:', error);
@@ -90,14 +89,13 @@ const CreateUserRole = ({isOpen, onClose}) => {
     return (
         <>
             {isOpen && (
-                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-end z-[999">
+                <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-end z-[999]">
                     <div
-                        className="fixed top-[420px] right-0 transform -translate-y-1/2 w-[797px] h-[840px] p-5 bg-white shadow-md z-[1000] rounded-l-lg"
+                        className="fixed top-[370px] right-0 transform -translate-y-1/2 w-[797px] h-[740px] p-5 bg-white shadow-md z-[1000] rounded-l-lg overflow-y-auto"
                     >
                         <button
-                            onClick={() => onClose}
-                            className="absolute top-2.5 right-2.5 bg-transparent border-none text-[16px] cursor-pointer backdrop-blur-sm
-"
+                            onClick={onClose}
+                            className="absolute top-2.5 right-2.5 bg-transparent border-none text-[16px] cursor-pointer backdrop-blur-sm"
                         ><XMarkIcon className="w-6 h-6"/></button>
                         <div className="p-2 ">
                             {saveError && (
