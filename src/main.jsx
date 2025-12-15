@@ -35,6 +35,15 @@ Amplify.configure({
             },
         },
     },
+    loginWith: {
+        oauth: {
+            domain: "affooh-dev-auth.auth.ap-south-1.amazoncognito.com",
+            scopes: ["openid", "email", "profile"],
+            redirectSignIn: ["https://dev-app.affooh.com/auth/callback"],
+            redirectSignOut: ["https://dev-app.affooh.com/"],
+            responseType: "code", // MUST be "code"
+        },
+    }
 });
 
 ReactDOM.createRoot(document.getElementById("root")).render(
