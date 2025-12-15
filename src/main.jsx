@@ -40,7 +40,7 @@ Amplify.configure({
             ...existingConfig.Auth.Cognito,
             loginWith: {
                 oauth: {
-                    domain: "affooh-dev-auth.auth.ap-south-1.amazoncognito.com",
+                    domain: "https://affooh-dev-auth.auth.us-east-1.amazoncognito.com",
                     scopes: ["openid", "email", "profile"],
                     redirectSignIn: ["https://dev-app.affooh.com/auth/callback"],
                     redirectSignOut: ["https://dev-app.affooh.com/"],
