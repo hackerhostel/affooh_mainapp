@@ -16,6 +16,8 @@ import testIssueReducer from "./slice/testIssueSlice.js";
 import screenReducer from "./slice/screenSlice.js";
 import taskTypeReducer from "./slice/taskTypeSlice.js";
 import roleReducer from "./slice/roleSlice.js";
+import gitIntegrationReducer from "./slice/gitIntegrationSlice.js";
+import documentReducer from "./slice/documentSlice.js";
 
 export const store = configureStore({
   reducer: {
@@ -35,6 +37,8 @@ export const store = configureStore({
     testIssue: testIssueReducer,
     screen: screenReducer,
     taskType: taskTypeReducer,
-    role: roleReducer
+    role: roleReducer,
+    gitIntegration: gitIntegrationReducer,
+    document: documentReducer
   }
 });
