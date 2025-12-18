@@ -29,10 +29,10 @@ const Login = () => {
   const login = async (event) => {
     event.preventDefault();
 
-    if (formErrors) {
-      setIsValidationErrorsShown(true);
-      return;
-    }
+    // if (formErrors) {
+    //   setIsValidationErrorsShown(true);
+    //   return;
+    // }
 
     if (loading) {
       return;
