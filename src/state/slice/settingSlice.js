@@ -1,17 +1,24 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const settingSlice = createSlice({
-    name: "settingView",
-    initialState: {
-        selectedView:"customFields"
-    },
+const initialState = {
+    settingView: "userRoles",
+    selectedCategory: "general"
+};
 
+const settingSlice = createSlice({
+    name: "settings",
+    initialState,
     reducers: {
         setSettingView: (state, action) => {
-            state.selectedView = action.payload
+            state.settingView = action.payload;
         },
+        setSelectedCategory: (state, action) => {
+            state.selectedCategory = action.payload;
+        }
     },
 });
 
-export const {setSettingView} = settingSlice.actions;
+export const settingView = (state) => state?.setting?.settingView;
+export const selectedCategory = (state) => state?.setting?.selectedCategory;
+export const { setSettingView, setSelectedCategory } = settingSlice.actions;
 export default settingSlice.reducer;

@@ -43,13 +43,15 @@ Amplify.configure({
                     domain: "affooh-dev-auth.auth.us-east-1.amazoncognito.com",
                     scopes: ["openid", "email", "profile"],
                     redirectSignIn: ["https://dev-app.affooh.com/auth/callback"],
+                    //redirectSignIn: ["http://localhost:5173/auth/callback"],
                     redirectSignOut: ["https://dev-app.affooh.com/"],
+                    //redirectSignOut: ["http://localhost:5173"],
                     responseType: "code", // MUST be "code"
                 },
             }
 
         }
-    },
+    }
 });
 
 ReactDOM.createRoot(document.getElementById("root")).render(
