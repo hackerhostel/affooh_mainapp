@@ -25,7 +25,7 @@ import { CodeBracketIcon, CubeIcon } from '@heroicons/react/24/outline';
 let lastHandledOAuthSignature = null;
 
 const GitIntegration = () => {
-  
+
   const dispatch = useDispatch();
   const location = useLocation();
   const history = useHistory();
@@ -50,11 +50,6 @@ const GitIntegration = () => {
   useEffect(() => {
     dispatch(doGetGitOAuthConnections());
   }, [dispatch]);
-
-  // Debug: Log OAuth connections when they change
-  useEffect(() => {
-    console.log('OAuth Connections Updated:', oauthConnections);
-  }, [oauthConnections]);
 
   // Handle OAuth callback success
   useEffect(() => {
@@ -92,7 +87,6 @@ const GitIntegration = () => {
     history,
     location.pathname,
     location.search,
-    addToast,
     refetchRepositories,
   ]);
 
@@ -122,9 +116,8 @@ const GitIntegration = () => {
       // Redirect to OAuth provider
       window.location.href = response.authUrl;
     } catch (error) {
-      addToast(
-        error || `Failed to connect ${provider}. Please try again.`,
-        { appearance: 'error' }
+      toast.error(
+        error || `Failed to connect ${provider}. Please try again.`
       );
     }
   };
@@ -155,9 +148,8 @@ const GitIntegration = () => {
       });
       refetchRepositories();
     } catch (error) {
-      addToast(
-        error || 'Failed to connect repository. Please try again.',
-        { appearance: 'error' }
+      toast.error(
+        error || 'Failed to connect repository. Please try again.'
       );
     }
   };
@@ -177,9 +169,8 @@ const GitIntegration = () => {
       setRepositoryToDisconnect(null);
       refetchRepositories();
     } catch (error) {
-      addToast(
-        error || 'Failed to disconnect repository. Please try again.',
-        { appearance: 'error' }
+      toast.error(
+        error || 'Failed to disconnect repository. Please try again.'
       );
     }
   };
@@ -478,9 +469,8 @@ const GitIntegration = () => {
                               await dispatch(doSyncRepository(repo.id)).unwrap();
                               toast.success();
                             } catch (error) {
-                              addToast(
-                                error || 'Failed to sync repository. Please try again.',
-                                { appearance: 'error' }
+                              toast.error(
+                                error || 'Failed to sync repository. Please try again.'
                               );
                             }
                           }}
