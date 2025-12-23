@@ -19,7 +19,6 @@ import {selectUser} from '../../state/slice/authSlice';
 import React, {Fragment, useEffect, useRef, useState} from 'react';
 import Notification from "./NotificationPopup.jsx";
 import AffoohDots from "../../assets/dots.png";
-import {Amplify} from "aws-amplify";
 
 function Sidebar() {
     const location = useLocation();
@@ -34,8 +33,6 @@ function Sidebar() {
     const handleSignOut = async () => {
         setLoading(true);
         try {
-            const existingConfig = Amplify.getConfig();
-            console.log("Current Config:", existingConfig.Auth.Cognito.loginWith.oauth);
             await signOut({global: true});
         } catch (err) {
             console.error("Logout failed", err);

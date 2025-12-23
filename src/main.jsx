@@ -48,7 +48,7 @@ Amplify.configure({
                     domain: "affooh-dev-auth.auth.us-east-1.amazoncognito.com",
                     scopes: ["openid", "email", "profile"],
                     redirectSignIn: [`${APP_URL}/auth/callback`],
-                    redirectSignOut: [APP_URL],
+                    redirectSignOut: [`${APP_URL}/logout`],
                     responseType: "code",
                 },
             },
