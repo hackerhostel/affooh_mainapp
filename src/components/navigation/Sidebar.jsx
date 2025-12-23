@@ -21,57 +21,58 @@ import Notification from "./NotificationPopup.jsx";
 import AffoohDots from "../../assets/dots.png";
 
 function Sidebar() {
-  const location = useLocation();
-  const history = useHistory();
-  const userDetails = useSelector(selectUser);
-  const [loading, setLoading] = useState(false);
-  const [isOpenPopUp, setIsOpenPopUp] = useState(false);
+    const location = useLocation();
+    const history = useHistory();
+    const userDetails = useSelector(selectUser);
+    const [loading, setLoading] = useState(false);
+    const [isOpenPopUp, setIsOpenPopUp] = useState(false);
     const [isAppMenuOpen, setIsAppMenuOpen] = useState(false);
     const menuRef = useRef(null);
     const menuButtonRef = useRef(null);
 
     const handleSignOut = async () => {
-    setLoading(true);
-    try {
-      await signOut({ global: true });
-      window.location.reload();
-    } finally {
-      setLoading(false);
+        setLoading(true);
+        try {
+            await signOut({global: true});
+        } catch (err) {
+            console.error("Logout failed", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const userProfile = () => {
+        history.push('/profile')
+    };
+
+    const handleSettingsClick = () => {
+        history.push('/settings')
+    };
+
+    const handleNotificationClick = () => {
+        setIsOpenPopUp((prevState) => !prevState);
+    };
+
+    const closePopUp = () => {
+        setIsOpenPopUp(false);
     }
-  };
 
-  const userProfile = () => {
-    history.push('/profile')
-  };
-
-  const handleSettingsClick = () => {
-    history.push('/settings')
-  };
-
-  const handleNotificationClick = () => {
-    setIsOpenPopUp((prevState) => !prevState);
-  };
-
-  const closePopUp = () => {
-    setIsOpenPopUp(false);
-  }
-
-  const MenuItem = ({ link, Icon }) => (
-    <Link
-      to={link}
-      className={`w-12 h-12 ${
-        location.pathname === link
-          ? 'bg-primary-pink'
-          : 'bg-gray-200 hover:bg-secondary-pink'
-      } rounded-full flex items-center justify-center transition-colors duration-200`}
-    >
-      <Icon
-        className={`w-6 h-6 ${
-          location.pathname === link ? 'text-white' : 'text-gray-700'
-        }`}
-      />
-    </Link>
-  );
+    const MenuItem = ({link, Icon}) => (
+        <Link
+            to={link}
+            className={`w-12 h-12 ${
+                location.pathname === link
+                    ? 'bg-primary-pink'
+                    : 'bg-gray-200 hover:bg-secondary-pink'
+            } rounded-full flex items-center justify-center transition-colors duration-200`}
+        >
+            <Icon
+                className={`w-6 h-6 ${
+                    location.pathname === link ? 'text-white' : 'text-gray-700'
+                }`}
+            />
+        </Link>
+    );
 
     useEffect(() => {
         function handleClickOutside(e) {
