@@ -1,5 +1,5 @@
 import React, {useRef, useState} from 'react';
-import {signIn} from 'aws-amplify/auth';
+import {signInWithRedirect} from 'aws-amplify/auth';
 import useValidation from "../utils/use-validation.jsx";
 import FormInput from "../components/FormInput.jsx";
 import {Link, useHistory, useLocation} from "react-router-dom";
@@ -29,22 +29,24 @@ const Login = () => {
   const login = async (event) => {
     event.preventDefault();
 
-    if (formErrors) {
-      setIsValidationErrorsShown(true);
-      return;
-    }
+    // if (formErrors) {
+    //   setIsValidationErrorsShown(true);
+    //   return;
+    // }
 
     if (loading) {
       return;
     }
 
     try {
-      const response = await signIn(loginDetails)
+      // const response = await signIn(loginDetails)
 
-      if (response.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-        history.push('/inviteUserRegister', {email: loginDetails.username});
-        return;
-      }
+      await signInWithRedirect();
+
+      // if (response.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+      //   history.push('/inviteUserRegister', {email: loginDetails.username});
+      //   return;
+      // }
 
       dispatch(doGetWhoAmI())
       toast.success('logged in Successfully')

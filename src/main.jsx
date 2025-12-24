@@ -23,6 +23,10 @@ Amplify.configure(AwsConfigAuth);
 
 const existingConfig = Amplify.getConfig();
 
+const APP_URL = import.meta.env.DEV
+    ? "http://localhost:5173"
+    : "https://dev-app.affooh.com";
+
 Amplify.configure({
     ...existingConfig,
     API: {
@@ -35,6 +39,21 @@ Amplify.configure({
             },
         },
     },
+    Auth: {
+        ...existingConfig.Auth,
+        Cognito: {
+            ...existingConfig.Auth.Cognito,
+            loginWith: {
+                oauth: {
+                    domain: "affooh-dev-auth.auth.us-east-1.amazoncognito.com",
+                    scopes: ["openid", "email", "profile"],
+                    redirectSignIn: [`${APP_URL}/auth/callback`],
+                    redirectSignOut: [`${APP_URL}/logout`],
+                    responseType: "code",
+                },
+            },
+        },
+    }
 });
 
 ReactDOM.createRoot(document.getElementById("root")).render(
