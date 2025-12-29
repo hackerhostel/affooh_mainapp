@@ -112,22 +112,29 @@ function Sidebar() {
                         className="absolute left-20 top-16 w-80 bg-white rounded-lg shadow-xl border border-gray-100 py-3 z-50"
                     >
                         {[
-                            {name: "Project Management", url: "#", icon: <PresentationChartLineIcon/>},
+                            {
+                                name: "Project Management",
+                                url: "https://dev-pm.affooh.com/dashboard",
+                                icon: <PresentationChartLineIcon/>
+                            },
                             {name: "Compliance Management", url: "#", icon: <DocumentChartBarIcon/>},
                             {name: "Human Resource Management", url: "#", icon: <UserGroupIcon/>},
                             {name: "Finance Management", url: "#", icon: <BanknotesIcon/>},
                             {name: "Sales Management", url: "#", icon: <BriefcaseIcon/>}
                         ].map((item, index) => (
-                            <button
+                            <a
                                 key={index}
+                                href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="flex items-center w-full px-4 py-3 hover:bg-gray-50 transition"
                             >
                                 <div
                                     className="w-10 h-10 rounded-full bg-primary-pink flex items-center justify-center text-white text-sm font-semibold">
                                     {React.cloneElement(item.icon, {className: "w-5 h-5"})}
                                 </div>
-                                <span className="ml-3 text-gray-700 font-medium">{item?.name}</span>
-                            </button>
+                                <span className="ml-3 text-gray-700 font-medium">{item.name}</span>
+                            </a>
                         ))}
                     </div>
                 )}
