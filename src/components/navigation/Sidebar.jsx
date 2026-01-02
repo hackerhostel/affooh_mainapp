@@ -136,6 +136,7 @@ function Sidebar() {
                 <MenuItem link="/dashboard" Icon={Squares2X2Icon}/>
                 <MenuItem link="/user-management" Icon={UserIcon}/>
                 <MenuItem link="/chat" Icon={ChatBubbleOvalLeftIcon}/>
+                <MenuItem link="/settings" Icon={CogIcon}/>
             </div>
 
 
@@ -198,17 +199,6 @@ function Sidebar() {
                                                 className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
                                             >
                                                 <UserIcon className="w-4 h-4 mr-3"/> My Profile
-                                            </button>
-                                        )}
-                                    </Menu.Item>
-
-                                    <Menu.Item>
-                                        {({active}) => (
-                                            <button
-                                                onClick={handleSettingsClick}
-                                                className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
-                                            >
-                                                <CogIcon className="w-4 h-4 mr-3"/> Settings
                                             </button>
                                         )}
                                     </Menu.Item>
