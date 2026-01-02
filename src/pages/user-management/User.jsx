@@ -1,20 +1,15 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import {
-    PencilIcon,
-    EllipsisVerticalIcon,
-    XMarkIcon,
-    TrashIcon,
-    CheckBadgeIcon,
-    PlusCircleIcon,
-} from "@heroicons/react/24/outline";
-import FormSelect from "../../components/FormSelect.jsx";
-import { getSelectOptions } from "../../utils/commonUtils.js";
+import React, {useCallback, useEffect, useRef, useState} from "react";
+import {EllipsisVerticalIcon, TrashIcon, XMarkIcon,} from "@heroicons/react/24/outline";
 import SearchBar from "../../components/SearchBar.jsx";
-import FormInput from "../../components/FormInput.jsx";
-import { useDispatch, useSelector } from "react-redux";
-import { selectOrganizationUsers, selectInitialDataLoading, selectInitialDataError, doGetOrganizationUsers } from "../../state/slice/appSlice.js";
-import { sendInvitation } from "../../state/slice/registerSlice.js";
-import { toast } from "react-toastify";
+import {useDispatch, useSelector} from "react-redux";
+import {
+    doGetOrganizationUsers,
+    selectInitialDataError,
+    selectInitialDataLoading,
+    selectOrganizationUsers
+} from "../../state/slice/appSlice.js";
+import {sendInvitation} from "../../state/slice/registerSlice.js";
+import {toast} from "react-toastify";
 import axios from "axios";
 import ConfirmationDialog from "../../components/ConfirmationDialog.jsx";
 
@@ -26,6 +21,8 @@ const User = () => {
 
     const [formValues, setFormValues] = useState({
         inviteEmail: "",
+        firstName: "",
+        lastName: "",
         selectedRole: 1,
     });
 
@@ -33,6 +30,8 @@ const User = () => {
     const [filteredUsers, setFilteredUsers] = useState([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [emailError, setEmailError] = useState("");
+    const [firstNameError, setFirstNameError] = useState("");
+    const [lastNameError, setLastNameError] = useState("");
     const [isValidating, setIsValidating] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -63,6 +62,7 @@ const User = () => {
                 return nameA.localeCompare(nameB);
             });
             setFilteredUsers(sortedUsers);
+            console.log(sortedUsers)
         } else {
             setFilteredUsers([]);
         }
@@ -118,7 +118,55 @@ const User = () => {
         debouncedValidateEmail(email);
     };
 
+    const nameRegex = /^[A-Za-z\s'-]{2,50}$/;
+
+    const validateFirstName = (name) => {
+        if (!name.trim()) {
+            setFirstNameError("First name is required");
+            return false;
+        }
+        if (!nameRegex.test(name)) {
+            setFirstNameError("Enter a valid first name");
+            return false;
+        }
+        setFirstNameError("");
+        return true;
+    };
+
+    const validateLastName = (name) => {
+        if (!name.trim()) {
+            setLastNameError("Last name is required");
+            return false;
+        }
+        if (!nameRegex.test(name)) {
+            setLastNameError("Enter a valid last name");
+            return false;
+        }
+        setLastNameError("");
+        return true;
+    };
+
+    const handleFirstNameChange = (e) => {
+        const value = e.target.value;
+        setFormValues({...formValues, firstName: value});
+        validateFirstName(value);
+    };
+
+    const handleLastNameChange = (e) => {
+        const value = e.target.value;
+        setFormValues({...formValues, lastName: value});
+        validateLastName(value);
+    };
+
     const handleInvite = async () => {
+        const isFirstNameValid = validateFirstName(formValues.firstName);
+        const isLastNameValid = validateLastName(formValues.lastName);
+
+        if (!isFirstNameValid || !isLastNameValid) {
+            toast.error("Please correct name errors");
+            return;
+        }
+
         if (!formValues.inviteEmail.trim()) {
             setEmailError("Email is required");
             toast.error("Please enter an email to invite.");
@@ -134,11 +182,15 @@ const User = () => {
         try {
             await dispatch(sendInvitation({
                 email: formValues.inviteEmail.trim(),
-                userRole: formValues.selectedRole
+                userRole: formValues.selectedRole,
+                firstName: formValues.firstName.trim(),
+                lastName: formValues.lastName.trim(),
             })).unwrap();
 
-            setFormValues({ inviteEmail: "", selectedRole: 1 });
+            setFormValues({inviteEmail: "", selectedRole: 1, firstName: "", lastName: ""});
             setEmailError("");
+            setFirstNameError("")
+            setLastNameError("")
             toast.success("Invitation sent successfully!");
             dispatch(doGetOrganizationUsers());
         } catch (error) {
@@ -237,57 +289,90 @@ const User = () => {
         <div className="">
             <div className="">
                 <p className="text-left text-2xl">User</p>
-
-                <div className="flex items-center gap-4">
+                <div className="flex items-end justify-end gap-4 flex-col">
                     <div className="w-2/5">
                         <SearchBar onSearch={handleSearch} placeholder="Search users..." />
                     </div>
-
-                    <div className="w-1/5">
-                        <div className="relative">
-                            <input
-                                type="email"
-                                value={formValues.inviteEmail}
-                                onChange={handleEmailChange}
-                                placeholder="Enter email address"
-                                className={`w-full p-4 rounded-lg shadow-md border focus:outline-none focus:ring-2 ${
-                                    emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
-                                }`}
-                            />
-                            {emailError && (
-                                <div className="text-red-500 text-sm mt-1">
+                    <div className="flex items-center gap-4 w-full">
+                        <div className="w-1/5">
+                            <div className="relative">
+                                <input
+                                    type="email"
+                                    value={formValues.inviteEmail}
+                                    onChange={handleEmailChange}
+                                    placeholder="Enter email address"
+                                    className={`w-full p-4 rounded-lg shadow-md border focus:outline-none focus:ring-2 ${emailError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'}`}
+                                />
+                                {emailError && (<div className="text-red-500 text-sm mt-1">
                                     {emailError}
-                                </div>
-                            )}
+                                </div>)}
+                            </div>
+                        </div>
+                        <div className="w-1/5">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={formValues.firstName}
+                                    onChange={handleFirstNameChange}
+                                    placeholder="Enter first name"
+                                    className={`w-full p-4 rounded-lg shadow-md border focus:outline-none focus:ring-2 ${
+                                        firstNameError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                                    }`}
+                                />
+                                {firstNameError && (<div className="text-red-500 text-sm mt-1">
+                                    {firstNameError}
+                                </div>)}
+                            </div>
+                        </div>
+                        <div className="w-1/5">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={formValues.lastName}
+                                    onChange={handleLastNameChange}
+                                    placeholder="Enter last name"
+                                    className={`w-full p-4 rounded-lg shadow-md border focus:outline-none focus:ring-2 ${
+                                        lastNameError ? 'border-red-500 focus:ring-red-500' : 'border-gray-300 focus:ring-blue-500'
+                                    }`}
+                                />
+                                {lastNameError && (<div className="text-red-500 text-sm mt-1">
+                                    {lastNameError}
+                                </div>)}
+                            </div>
+                        </div>
+                        <div className="w-1/5">
+                            <select
+                                value={formValues.selectedRole}
+                                onChange={(e) => setFormValues({...formValues, selectedRole: e.target.value})}
+                                className="w-full p-4 rounded-lg shadow-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
+                                {roles?.map((r) => (
+                                    <option key={r.id} value={r.id}>{r.value}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="w-1/5">
+                            <button
+                                onClick={handleInvite}
+                                disabled={
+                                    !formValues.inviteEmail.trim() ||
+                                    !formValues.firstName.trim() ||
+                                    !formValues.lastName.trim() ||
+                                    !!emailError ||
+                                    !!firstNameError ||
+                                    !!lastNameError ||
+                                    isValidating
+                                }
+                                className={`w-full px-8 py-3 rounded-md text-white ${
+                                    !formValues.inviteEmail.trim() || !!emailError || isValidating
+                                        ? 'bg-gray-400 cursor-not-allowed'
+                                        : 'bg-primary-pink hover:bg-pink-600'
+                                }`}
+                            >
+                                {isValidating ? 'Validating...' : 'Invite'}
+                            </button>
                         </div>
                     </div>
-
-                    <div className="w-1/5">
-                        <select
-                            value={formValues.selectedRole}
-                            onChange={(e) => setFormValues({ ...formValues, selectedRole: e.target.value })}
-                            className="w-full p-4 rounded-lg shadow-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                            {roles?.map((r) => (
-                                <option key={r.id} value={r.id}>{r.value}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="w-1/5">
-                        <button 
-                            onClick={handleInvite}
-                            disabled={!formValues.inviteEmail.trim() || !!emailError || isValidating}
-                            className={`w-full px-8 py-3 rounded-md text-white ${
-                                !formValues.inviteEmail.trim() || !!emailError || isValidating
-                                    ? 'bg-gray-400 cursor-not-allowed'
-                                    : 'bg-primary-pink hover:bg-pink-600'
-                            }`}
-                        >
-                            {isValidating ? 'Validating...' : 'Invite'}
-                        </button>
-                    </div>
-
                 </div>
 
                 {/* <div className="flex items-center gap-1 cursor-pointer">
@@ -299,14 +384,15 @@ const User = () => {
             <div className="bg-white rounded p-2 mt-3">
                 <table className="table-auto w-full border-collapse">
                     <thead>
-                        <tr className="text-left border-b border-gray-200 text-secondary-grey">
-                            <th className="py-3 px-2 text-center">#</th>
-                            <th className="py-3 px-2 text-center">User</th>
-                            <th className="py-3 px-2 text-center">Role</th>
-                            <th className="py-3 px-2 text-center">Email</th>
-                            <th className="py-3 px-2 text-center">Contact</th>
-                            <th className="py-3 px-2">Actions</th>
-                        </tr>
+                    <tr className="text-left border-b border-gray-200 text-secondary-grey">
+                        <th className="py-3 px-2 text-center">#</th>
+                        <th className="py-3 px-2 text-center">User</th>
+                        <th className="py-3 px-2 text-center">Role</th>
+                        <th className="py-3 px-2 text-center">Email</th>
+                        <th className="py-3 px-2 text-center">Contact</th>
+                        <th className="py-3 px-2 text-center">Invite Status</th>
+                        <th className="py-3 px-2">Actions</th>
+                    </tr>
                     </thead>
 
                     <tbody>
@@ -332,6 +418,12 @@ const User = () => {
 
                                     <td className="py-3 px-2">
                                         {user.contactNumber || 'N/A'}
+                                    </td>
+
+                                    <td className="py-3 px-2">
+                                        <span className={`px-2 py-1 rounded text-sm font-medium ${user?.registered ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                                            {user?.registered ? "Accepted" : "Not Accepted"}
+                                        </span>
                                     </td>
 
                                     <td className="py-3 px-2">
