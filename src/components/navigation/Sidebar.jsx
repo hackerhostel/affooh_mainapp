@@ -21,58 +21,57 @@ import Notification from "./NotificationPopup.jsx";
 import AffoohDots from "../../assets/dots.png";
 
 function Sidebar() {
-    const location = useLocation();
-    const history = useHistory();
-    const userDetails = useSelector(selectUser);
-    const [loading, setLoading] = useState(false);
-    const [isOpenPopUp, setIsOpenPopUp] = useState(false);
+  const location = useLocation();
+  const history = useHistory();
+  const userDetails = useSelector(selectUser);
+  const [loading, setLoading] = useState(false);
+  const [isOpenPopUp, setIsOpenPopUp] = useState(false);
     const [isAppMenuOpen, setIsAppMenuOpen] = useState(false);
     const menuRef = useRef(null);
     const menuButtonRef = useRef(null);
 
     const handleSignOut = async () => {
-        setLoading(true);
-        try {
-            await signOut({global: true});
-        } catch (err) {
-            console.error("Logout failed", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const userProfile = () => {
-        history.push('/profile')
-    };
-
-    const handleSettingsClick = () => {
-        history.push('/settings')
-    };
-
-    const handleNotificationClick = () => {
-        setIsOpenPopUp((prevState) => !prevState);
-    };
-
-    const closePopUp = () => {
-        setIsOpenPopUp(false);
+    setLoading(true);
+    try {
+      await signOut({ global: true });
+      window.location.reload();
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const MenuItem = ({link, Icon}) => (
-        <Link
-            to={link}
-            className={`w-12 h-12 ${
-                location.pathname === link
-                    ? 'bg-primary-pink'
-                    : 'bg-gray-200 hover:bg-secondary-pink'
-            } rounded-full flex items-center justify-center transition-colors duration-200`}
-        >
-            <Icon
-                className={`w-6 h-6 ${
-                    location.pathname === link ? 'text-white' : 'text-gray-700'
-                }`}
-            />
-        </Link>
-    );
+  const userProfile = () => {
+    history.push('/profile')
+  };
+
+  const handleSettingsClick = () => {
+    history.push('/settings')
+  };
+
+  const handleNotificationClick = () => {
+    setIsOpenPopUp((prevState) => !prevState);
+  };
+
+  const closePopUp = () => {
+    setIsOpenPopUp(false);
+  }
+
+  const MenuItem = ({ link, Icon }) => (
+    <Link
+      to={link}
+      className={`w-12 h-12 ${
+        location.pathname === link
+          ? 'bg-primary-pink'
+          : 'bg-gray-200 hover:bg-secondary-pink'
+      } rounded-full flex items-center justify-center transition-colors duration-200`}
+    >
+      <Icon
+        className={`w-6 h-6 ${
+          location.pathname === link ? 'text-white' : 'text-gray-700'
+        }`}
+      />
+    </Link>
+  );
 
     useEffect(() => {
         function handleClickOutside(e) {
@@ -112,29 +111,22 @@ function Sidebar() {
                         className="absolute left-20 top-16 w-80 bg-white rounded-lg shadow-xl border border-gray-100 py-3 z-50"
                     >
                         {[
-                            {
-                                name: "Project Management",
-                                url: "https://dev-pm.affooh.com/dashboard",
-                                icon: <PresentationChartLineIcon/>
-                            },
+                            {name: "Project Management", url: "#", icon: <PresentationChartLineIcon/>},
                             {name: "Compliance Management", url: "#", icon: <DocumentChartBarIcon/>},
                             {name: "Human Resource Management", url: "#", icon: <UserGroupIcon/>},
                             {name: "Finance Management", url: "#", icon: <BanknotesIcon/>},
                             {name: "Sales Management", url: "#", icon: <BriefcaseIcon/>}
                         ].map((item, index) => (
-                            <a
+                            <button
                                 key={index}
-                                href={item.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
                                 className="flex items-center w-full px-4 py-3 hover:bg-gray-50 transition"
                             >
                                 <div
                                     className="w-10 h-10 rounded-full bg-primary-pink flex items-center justify-center text-white text-sm font-semibold">
                                     {React.cloneElement(item.icon, {className: "w-5 h-5"})}
                                 </div>
-                                <span className="ml-3 text-gray-700 font-medium">{item.name}</span>
-                            </a>
+                                <span className="ml-3 text-gray-700 font-medium">{item?.name}</span>
+                            </button>
                         ))}
                     </div>
                 )}
@@ -144,6 +136,7 @@ function Sidebar() {
                 <MenuItem link="/dashboard" Icon={Squares2X2Icon}/>
                 <MenuItem link="/user-management" Icon={UserIcon}/>
                 <MenuItem link="/chat" Icon={ChatBubbleOvalLeftIcon}/>
+                <MenuItem link="/settings" Icon={CogIcon}/>
             </div>
 
 
@@ -206,17 +199,6 @@ function Sidebar() {
                                                 className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
                                             >
                                                 <UserIcon className="w-4 h-4 mr-3"/> My Profile
-                                            </button>
-                                        )}
-                                    </Menu.Item>
-
-                                    <Menu.Item>
-                                        {({active}) => (
-                                            <button
-                                                onClick={handleSettingsClick}
-                                                className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
-                                            >
-                                                <CogIcon className="w-4 h-4 mr-3"/> Settings
                                             </button>
                                         )}
                                     </Menu.Item>
