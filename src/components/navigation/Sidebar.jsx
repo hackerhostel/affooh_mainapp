@@ -114,33 +114,19 @@ function Sidebar() {
                         {[
                             {
                                 name: "Project Management",
-                                url: "https://dev-pm.affooh.com/dashboard/",
+                                url: "https://dev-pm.affooh.com/dashboard",
                                 icon: <PresentationChartLineIcon/>
                             },
-                            {
-                                name: "Compliance Management",
-                                url: "https://dev-cm.affooh.com/dashboard/",
-                                icon: <DocumentChartBarIcon/>
-                            },
-                            {
-                                name: "Human Resource Management",
-                                url: "https://dev-hr.affooh.com/dashboard/",
-                                icon: <UserGroupIcon/>
-                            },
-                            {
-                                name: "Finance Management",
-                                url: "https://dev-fm.affooh.com/dashboard/",
-                                icon: <BanknotesIcon/>
-                            },
-                            {
-                                name: "Sales Management",
-                                url: "https://dev-sm.affooh.com/dashboard/",
-                                icon: <BriefcaseIcon/>
-                            }
+                            {name: "Compliance Management", url: "#", icon: <DocumentChartBarIcon/>},
+                            {name: "Human Resource Management", url: "#", icon: <UserGroupIcon/>},
+                            {name: "Finance Management", url: "#", icon: <BanknotesIcon/>},
+                            {name: "Sales Management", url: "#", icon: <BriefcaseIcon/>}
                         ].map((item, index) => (
                             <a
                                 key={index}
                                 href={item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 className="flex items-center w-full px-4 py-3 hover:bg-gray-50 transition"
                             >
                                 <div

@@ -136,11 +136,13 @@ const registerSlice = createSlice({
 
 export const sendInvitation = createAsyncThunk(
   "invitations/sendInvitation",
-  async ({ email, userRole }, thunkApi) => {
+  async ({ email, userRole, firstName, lastName }, thunkApi) => {
     try {
       const response = await axios.post("/organizations/invite-user", {
         email,
         userRole,
+        firstName,
+        lastName
       });
 
       if (!response?.data?.body?.userID) {

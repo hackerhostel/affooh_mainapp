@@ -2,7 +2,7 @@ import React, {useEffect, useRef, useState} from "react";
 import {doVerifyOTP} from "../state/slice/registerSlice.js";
 import {useDispatch} from "react-redux";
 import {useHistory, useLocation} from "react-router-dom";
-import {resetPassword} from "aws-amplify/auth";
+import {resetPassword, signInWithRedirect} from "aws-amplify/auth";
 import {toast} from "react-toastify";
 
 const OTPVerification = () => {
@@ -120,8 +120,8 @@ const OTPVerification = () => {
           })
         );
 
-        history.push("/login");
         toast.success('Account verification successful. Please login.')
+        await signInWithRedirect();
       }
     } catch (error) {
       toast.error('error.message || "Verification failed. Please try again."')
