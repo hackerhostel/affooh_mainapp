@@ -1,5 +1,5 @@
 import './App.css';
-import { BrowserRouter, Route, Switch } from 'react-router-dom';
+import {BrowserRouter, Route, Switch} from 'react-router-dom';
 
 import AuthGuard from './auth/AuthGuard';
 import ForgotPassword from './auth/ForgotPassword';
@@ -10,11 +10,18 @@ import PublicGuard from './auth/PublicGuard';
 import Register from './auth/Register';
 import UserInviteRegister from './auth/UserInviteRegister';
 import Dashboard from './pages/Dashboard';
+import AuthChoice from "./auth/AuthChoice.jsx";
 
 function App() {
   return (
     <BrowserRouter>
       <Switch>
+        <Route path="/auth">
+          <PublicGuard>
+            <AuthChoice/>
+          </PublicGuard>
+        </Route>
+
         <Route path="/login">
           <PublicGuard>
             <Login />
