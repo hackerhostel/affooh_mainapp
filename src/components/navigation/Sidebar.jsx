@@ -112,13 +112,16 @@ function Sidebar() {
                     >
                         {[
                             {name: "Project Management", url: "#", icon: <PresentationChartLineIcon/>},
-                            {name: "Compliance Management", url: "#", icon: <DocumentChartBarIcon/>},
-                            {name: "Human Resource Management", url: "#", icon: <UserGroupIcon/>},
-                            {name: "Finance Management", url: "#", icon: <BanknotesIcon/>},
-                            {name: "Sales Management", url: "#", icon: <BriefcaseIcon/>}
+                            {name: "Compliance Management", url: "https://dev-cm.affooh.com/dashboard/", icon: <DocumentChartBarIcon/>},
+                            {name: "Human Resource Management", url: "https://dev-hr.affooh.com/dashboard/", icon: <UserGroupIcon/>},
+                            {name: "Finance Management", url: "https://dev-fm.affooh.com/dashboard/", icon: <BanknotesIcon/>},
+                            {name: "Sales Management", url: "https://dev-sm.affooh.com/dashboard/", icon: <BriefcaseIcon/>}
                         ].map((item, index) => (
-                            <button
+                            <a
                                 key={index}
+                                href={item.url}
+                                target={item.url !== "#" ? "_blank" : undefined}
+                                rel={item.url !== "#" ? "noopener noreferrer" : undefined}
                                 className="flex items-center w-full px-4 py-3 hover:bg-gray-50 transition"
                             >
                                 <div
@@ -126,7 +129,7 @@ function Sidebar() {
                                     {React.cloneElement(item.icon, {className: "w-5 h-5"})}
                                 </div>
                                 <span className="ml-3 text-gray-700 font-medium">{item?.name}</span>
-                            </button>
+                            </a>
                         ))}
                     </div>
                 )}
