@@ -1,10 +1,11 @@
-import React, {useRef, useState} from "react";
-import {Link, useHistory} from "react-router-dom";
-import {resetPassword} from "aws-amplify/auth";
+import React, { useRef, useState } from "react";
+import { Link, useHistory } from "react-router-dom";
+import { resetPassword } from "aws-amplify/auth";
 import FormInput from "../components/FormInput.jsx";
 import useValidation from "../utils/use-validation.jsx";
-import {ForgotPasswordSchema} from "../state/domains/authModels.js";
-import {toast} from "react-toastify";
+import { ForgotPasswordSchema } from "../state/domains/authModels.js";
+import { toast } from "react-toastify";
+import Spinner from '../components/Spinner.jsx';
 
 const ForgotPassword = () => {
   const history = useHistory();
@@ -55,12 +56,9 @@ const ForgotPassword = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div
-        style={{ width: "650px", height: "450px" }}
-        className="bg-white text-center shadow-xl rounded-lg p-6"
-      >
-        <p className="text-4xl font-medium mt-16">Forgot Password</p>
-        <span className="block mt-6 text-gray-600">
+      <div className="w-[650px] bg-white text-center shadow-2xl rounded-2xl p-10 flex flex-col justify-center min-h-[500px]">
+        <h3 className="text-4xl font-bold mb-3">Forgot Password</h3>
+        <span className="block mt-2 text-lg text-text-color font-light">
           Enter your email to receive a verification code
         </span>
         <form
@@ -68,7 +66,7 @@ const ForgotPassword = () => {
           ref={formRef}
           onSubmit={handleForgotPassword}
         >
-          <div className="m-auto pt-8" style={{ width: "420px" }}>
+          <div className="mx-auto w-full max-w-md pt-4">
             <FormInput
               type="email"
               name="email"
@@ -83,14 +81,13 @@ const ForgotPassword = () => {
           </div>
           <button
             type="submit"
-            style={{ width: "420px" }}
-            className="btn-login"
+            className="btn-login flex justify-center items-center h-12 mx-auto w-full max-w-md"
             disabled={loading}
           >
-            {loading ? "Sending..." : "Send Code"}
+            {loading ? <Spinner className="w-6 h-6 text-white animate-spin fill-white" /> : "Send Code"}
           </button>
         </form>
-        <div className="text-center mt-5 text-gray-600">
+        <div className="text-center mt-5 text-text-color">
           <Link to="/login" className="text-primary-pink">
             Back to Login
           </Link>

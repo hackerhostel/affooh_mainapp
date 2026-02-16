@@ -1,4 +1,4 @@
-import {Menu, Transition} from '@headlessui/react';
+import { Menu, Transition } from '@headlessui/react';
 import {
     ArrowRightStartOnRectangleIcon,
     BanknotesIcon,
@@ -12,11 +12,11 @@ import {
     UserGroupIcon,
     UserIcon
 } from '@heroicons/react/24/outline';
-import {signOut} from 'aws-amplify/auth';
-import {Link, useHistory, useLocation} from 'react-router-dom';
-import {useSelector} from 'react-redux';
-import {selectUser} from '../../state/slice/authSlice';
-import React, {Fragment, useEffect, useRef, useState} from 'react';
+import { signOut } from 'aws-amplify/auth';
+import { Link, useHistory, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../state/slice/authSlice';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import Notification from "./NotificationPopup.jsx";
 import AffoohDots from "../../assets/dots.png";
 
@@ -33,7 +33,10 @@ function Sidebar() {
     const handleSignOut = async () => {
         setLoading(true);
         try {
-            await signOut({global: true});
+            localStorage.clear();
+            sessionStorage.clear();
+            await signOut({ global: true });
+            window.location.href = "/auth"; // Force reload to clear all application state
         } catch (err) {
             console.error("Logout failed", err);
         } finally {
@@ -57,19 +60,17 @@ function Sidebar() {
         setIsOpenPopUp(false);
     }
 
-    const MenuItem = ({link, Icon}) => (
+    const MenuItem = ({ link, Icon }) => (
         <Link
             to={link}
-            className={`w-12 h-12 ${
-                location.pathname === link
-                    ? 'bg-primary-pink'
-                    : 'bg-gray-200 hover:bg-secondary-pink'
-            } rounded-full flex items-center justify-center transition-colors duration-200`}
+            className={`w-12 h-12 ${location.pathname === link
+                ? 'bg-primary-pink'
+                : 'bg-gray-200 hover:bg-secondary-pink'
+                } rounded-full flex items-center justify-center transition-colors duration-200`}
         >
             <Icon
-                className={`w-6 h-6 ${
-                    location.pathname === link ? 'text-white' : 'text-gray-700'
-                }`}
+                className={`w-6 h-6 ${location.pathname === link ? 'text-white' : 'text-gray-700'
+                    }`}
             />
         </Link>
     );
@@ -112,11 +113,15 @@ function Sidebar() {
                         className="absolute left-20 top-16 w-80 bg-white rounded-lg shadow-xl border border-gray-100 py-3 z-50"
                     >
                         {[
-                            {name: "Project Management", url: "#", icon: <PresentationChartLineIcon/>},
-                            {name: "Compliance Management", url: "#", icon: <DocumentChartBarIcon/>},
-                            {name: "Human Resource Management", url: "#", icon: <UserGroupIcon/>},
-                            {name: "Finance Management", url: "#", icon: <BanknotesIcon/>},
-                            {name: "Sales Management", url: "#", icon: <BriefcaseIcon/>}
+                            {
+                                name: "Project Management",
+                                url: "https://dev-pm.affooh.com/dashboard",
+                                icon: <PresentationChartLineIcon />
+                            },
+                            { name: "Compliance Management", url: "#", icon: <DocumentChartBarIcon /> },
+                            { name: "Human Resource Management", url: "#", icon: <UserGroupIcon /> },
+                            { name: "Finance Management", url: "#", icon: <BanknotesIcon /> },
+                            { name: "Sales Management", url: "#", icon: <BriefcaseIcon /> }
                         ].map((item, index) => (
                             <button
                                 key={index}
@@ -124,7 +129,7 @@ function Sidebar() {
                             >
                                 <div
                                     className="w-10 h-10 rounded-full bg-primary-pink flex items-center justify-center text-white text-sm font-semibold">
-                                    {React.cloneElement(item.icon, {className: "w-5 h-5"})}
+                                    {React.cloneElement(item.icon, { className: "w-5 h-5" })}
                                 </div>
                                 <span className="ml-3 text-gray-700 font-medium">{item?.name}</span>
                             </button>
@@ -134,9 +139,9 @@ function Sidebar() {
             </div>
 
             <div className="flex-grow flex flex-col items-center py-5 space-y-6">
-                <MenuItem link="/dashboard" Icon={Squares2X2Icon}/>
-                <MenuItem link="/user-management" Icon={UserIcon}/>
-                <MenuItem link="/chat" Icon={ChatBubbleOvalLeftIcon}/>
+                {/*<MenuItem link="/dashboard" Icon={Squares2X2Icon}/>*/}
+                <MenuItem link="/user-management" Icon={UserIcon} />
+                {/*<MenuItem link="/chat" Icon={ChatBubbleOvalLeftIcon}/>*/}
             </div>
 
 
@@ -193,45 +198,45 @@ function Sidebar() {
 
                                 <div className="py-1">
                                     <Menu.Item>
-                                        {({active}) => (
+                                        {({ active }) => (
                                             <button
                                                 onClick={userProfile}
                                                 className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
                                             >
-                                                <UserIcon className="w-4 h-4 mr-3"/> My Profile
+                                                <UserIcon className="w-4 h-4 mr-3" /> My Profile
                                             </button>
                                         )}
                                     </Menu.Item>
 
                                     <Menu.Item>
-                                        {({active}) => (
+                                        {({ active }) => (
                                             <button
                                                 onClick={handleSettingsClick}
                                                 className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
                                             >
-                                                <CogIcon className="w-4 h-4 mr-3"/> Settings
+                                                <CogIcon className="w-4 h-4 mr-3" /> Settings
                                             </button>
                                         )}
                                     </Menu.Item>
 
                                     <Menu.Item>
-                                        {({active}) => (
+                                        {({ active }) => (
                                             <button
                                                 onClick={handleNotificationClick}
                                                 className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
                                             >
-                                                <BellIcon className="w-4 h-4 mr-3"/> Notifications
+                                                <BellIcon className="w-4 h-4 mr-3" /> Notifications
                                             </button>
                                         )}
                                     </Menu.Item>
 
                                     <Menu.Item>
-                                        {({active}) => (
+                                        {({ active }) => (
                                             <button
                                                 onClick={handleSignOut}
                                                 className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
                                             >
-                                                <ArrowRightStartOnRectangleIcon className="w-4 h-4 mr-3"/>
+                                                <ArrowRightStartOnRectangleIcon className="w-4 h-4 mr-3" />
                                                 Log Out
                                             </button>
                                         )}
@@ -242,11 +247,11 @@ function Sidebar() {
                     </Menu>
                 ) : (
                     <div className="w-12 h-12 flex items-center justify-center">
-                        <Spinner/>
+                        <Spinner />
                     </div>
                 )}
             </div>
-            <Notification isOpen={isOpenPopUp} onClose={closePopUp}/>
+            <Notification isOpen={isOpenPopUp} onClose={closePopUp} />
         </div>
     );
 }

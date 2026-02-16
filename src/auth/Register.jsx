@@ -1,12 +1,13 @@
-import React, {useRef, useState} from "react";
-import {useDispatch} from "react-redux";
-import {Link, useHistory, useLocation} from "react-router-dom";
-import {toast} from "react-toastify";
+import React, { useRef, useState } from "react";
+import { useDispatch } from "react-redux";
+import { Link, useHistory, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
 import FormInput from "../components/FormInput";
 import LoginImage from "../images/register.jpg";
-import {RegisterSchema} from "../state/domains/authModels";
-import {doRegisterUser} from "../state/slice/registerSlice";
+import { RegisterSchema } from "../state/domains/authModels";
+import { doRegisterUser } from "../state/slice/registerSlice";
 import useValidation from "../utils/use-validation";
+import { signInWithRedirect } from "aws-amplify/auth";
 
 function Register() {
   const dispatch = useDispatch();
@@ -64,6 +65,8 @@ function Register() {
       setLoading(false);
     }
   };
+
+
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -170,6 +173,15 @@ function Register() {
               <button type="submit" className="btn-login" disabled={loading}>
                 {loading ? "Processing..." : "Sign Up"}
               </button>
+              <div className="text-center mt-5 text-text-color">
+                Already have an account?
+                <Link
+                  to="/login"
+                  className="text-primary-pink ml-2"
+                >
+                  Login
+                </Link>
+              </div>
             </form>
             <div className="text-center mt-5 text-text-color">
               Already have an account?
