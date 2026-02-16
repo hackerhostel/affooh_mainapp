@@ -1,13 +1,13 @@
 import React from "react";
-import {useHistory} from "react-router-dom";
+import { useHistory } from "react-router-dom";
 import Logo from "../assets/affooh_logo.png";
-import {signInWithRedirect} from "aws-amplify/auth";
+import { signInWithRedirect } from "aws-amplify/auth";
 
 const AuthChoice = () => {
     const history = useHistory();
 
-    const handleLogin = async () => {
-        await signInWithRedirect();
+    const handleLogin = () => {
+        history.push("/login");
     }
 
     return (

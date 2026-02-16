@@ -1,4 +1,4 @@
-import {Menu, Transition} from '@headlessui/react';
+import { Menu, Transition } from '@headlessui/react';
 import {
     ArrowRightStartOnRectangleIcon,
     BanknotesIcon,
@@ -12,66 +12,69 @@ import {
     UserGroupIcon,
     UserIcon
 } from '@heroicons/react/24/outline';
-import {signOut} from 'aws-amplify/auth';
-import {Link, useHistory, useLocation} from 'react-router-dom';
-import {useSelector} from 'react-redux';
-import {selectUser} from '../../state/slice/authSlice';
-import React, {Fragment, useEffect, useRef, useState} from 'react';
+import { signOut } from 'aws-amplify/auth';
+import { Link, useHistory, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../state/slice/authSlice';
+import React, { Fragment, useEffect, useRef, useState } from 'react';
 import Notification from "./NotificationPopup.jsx";
 import AffoohDots from "../../assets/dots.png";
+import Spinner from "../Spinner.jsx";
 
 function Sidebar() {
-  const location = useLocation();
-  const history = useHistory();
-  const userDetails = useSelector(selectUser);
-  const [loading, setLoading] = useState(false);
-  const [isOpenPopUp, setIsOpenPopUp] = useState(false);
+    const location = useLocation();
+    const history = useHistory();
+    const userDetails = useSelector(selectUser);
+    const [loading, setLoading] = useState(false);
+    const [isOpenPopUp, setIsOpenPopUp] = useState(false);
     const [isAppMenuOpen, setIsAppMenuOpen] = useState(false);
     const menuRef = useRef(null);
     const menuButtonRef = useRef(null);
 
     const handleSignOut = async () => {
-    setLoading(true);
-    try {
-      await signOut({ global: true });
-      window.location.reload();
-    } finally {
-      setLoading(false);
+        setLoading(true);
+        try {
+            localStorage.clear();
+            sessionStorage.clear();
+            await signOut({ global: true });
+            window.location.href = "/auth";
+        } catch (err) {
+            console.error("Logout failed", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const userProfile = () => {
+        history.push('/profile')
+    };
+
+    const handleSettingsClick = () => {
+        history.push('/settings')
+    };
+
+    const handleNotificationClick = () => {
+        setIsOpenPopUp((prevState) => !prevState);
+    };
+
+    const closePopUp = () => {
+        setIsOpenPopUp(false);
     }
-  };
 
-  const userProfile = () => {
-    history.push('/profile')
-  };
-
-  const handleSettingsClick = () => {
-    history.push('/settings')
-  };
-
-  const handleNotificationClick = () => {
-    setIsOpenPopUp((prevState) => !prevState);
-  };
-
-  const closePopUp = () => {
-    setIsOpenPopUp(false);
-  }
-
-  const MenuItem = ({ link, Icon }) => (
-    <Link
-      to={link}
-      className={`w-12 h-12 ${
-        location.pathname === link
-          ? 'bg-primary-pink'
-          : 'bg-gray-200 hover:bg-secondary-pink'
-      } rounded-full flex items-center justify-center transition-colors duration-200`}
-    >
-      <Icon
-        className={`w-6 h-6 ${
-          location.pathname === link ? 'text-white' : 'text-gray-700'
-        }`}
-      />
-    </Link>
-  );
+    const MenuItem = ({ link, Icon }) => (
+        <Link
+            to={link}
+            className={`w-12 h-12 ${location.pathname === link
+                    ? 'bg-primary-pink'
+                    : 'bg-gray-200 hover:bg-secondary-pink'
+                } rounded-full flex items-center justify-center transition-colors duration-200`}
+        >
+            <Icon
+                className={`w-6 h-6 ${location.pathname === link ? 'text-white' : 'text-gray-700'
+                    }`}
+            />
+        </Link>
+    );
 
     useEffect(() => {
         function handleClickOutside(e) {
@@ -111,11 +114,11 @@ function Sidebar() {
                         className="absolute left-20 top-16 w-80 bg-white rounded-lg shadow-xl border border-gray-100 py-3 z-50"
                     >
                         {[
-                            {name: "Project Management", url: "https://dev-pm.affooh.com/dashboard/", icon: <PresentationChartLineIcon/>},
-                            {name: "Compliance Management", url: "https://dev-cm.affooh.com/dashboard/", icon: <DocumentChartBarIcon/>},
-                            {name: "Human Resource Management", url: "https://dev-hr.affooh.com/dashboard/", icon: <UserGroupIcon/>},
-                            {name: "Finance Management", url: "https://dev-fm.affooh.com/dashboard/", icon: <BanknotesIcon/>},
-                            {name: "Sales Management", url: "https://dev-sm.affooh.com/dashboard/", icon: <BriefcaseIcon/>}
+                            { name: "Project Management", url: "https://dev-pm.affooh.com/dashboard/", icon: <PresentationChartLineIcon /> },
+                            { name: "Compliance Management", url: "https://dev-cm.affooh.com/dashboard/", icon: <DocumentChartBarIcon /> },
+                            { name: "Human Resource Management", url: "https://dev-hr.affooh.com/dashboard/", icon: <UserGroupIcon /> },
+                            { name: "Finance Management", url: "https://dev-fm.affooh.com/dashboard/", icon: <BanknotesIcon /> },
+                            { name: "Sales Management", url: "https://dev-sm.affooh.com/dashboard/", icon: <BriefcaseIcon /> }
                         ].map((item, index) => (
                             <a
                                 key={index}
@@ -126,7 +129,7 @@ function Sidebar() {
                             >
                                 <div
                                     className="w-10 h-10 rounded-full bg-primary-pink flex items-center justify-center text-white text-sm font-semibold">
-                                    {React.cloneElement(item.icon, {className: "w-5 h-5"})}
+                                    {React.cloneElement(item.icon, { className: "w-5 h-5" })}
                                 </div>
                                 <span className="ml-3 text-gray-700 font-medium">{item?.name}</span>
                             </a>
@@ -136,10 +139,10 @@ function Sidebar() {
             </div>
 
             <div className="flex-grow flex flex-col items-center py-5 space-y-6">
-                <MenuItem link="/dashboard" Icon={Squares2X2Icon}/>
-                <MenuItem link="/user-management" Icon={UserIcon}/>
-                <MenuItem link="/chat" Icon={ChatBubbleOvalLeftIcon}/>
-                <MenuItem link="/settings" Icon={CogIcon}/>
+                {/*<MenuItem link="/dashboard" Icon={Squares2X2Icon}/>*/}
+                <MenuItem link="/user-management" Icon={UserIcon} />
+                {/*<MenuItem link="/chat" Icon={ChatBubbleOvalLeftIcon}/>*/}
+                <MenuItem link="/settings" Icon={CogIcon} />
             </div>
 
 
@@ -196,34 +199,34 @@ function Sidebar() {
 
                                 <div className="py-1">
                                     <Menu.Item>
-                                        {({active}) => (
+                                        {({ active }) => (
                                             <button
                                                 onClick={userProfile}
                                                 className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
                                             >
-                                                <UserIcon className="w-4 h-4 mr-3"/> My Profile
+                                                <UserIcon className="w-4 h-4 mr-3" /> My Profile
                                             </button>
                                         )}
                                     </Menu.Item>
 
                                     <Menu.Item>
-                                        {({active}) => (
+                                        {({ active }) => (
                                             <button
                                                 onClick={handleNotificationClick}
                                                 className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
                                             >
-                                                <BellIcon className="w-4 h-4 mr-3"/> Notifications
+                                                <BellIcon className="w-4 h-4 mr-3" /> Notifications
                                             </button>
                                         )}
                                     </Menu.Item>
 
                                     <Menu.Item>
-                                        {({active}) => (
+                                        {({ active }) => (
                                             <button
                                                 onClick={handleSignOut}
                                                 className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
                                             >
-                                                <ArrowRightStartOnRectangleIcon className="w-4 h-4 mr-3"/>
+                                                <ArrowRightStartOnRectangleIcon className="w-4 h-4 mr-3" />
                                                 Log Out
                                             </button>
                                         )}
@@ -234,11 +237,11 @@ function Sidebar() {
                     </Menu>
                 ) : (
                     <div className="w-12 h-12 flex items-center justify-center">
-                        <Spinner/>
+                        <Spinner />
                     </div>
                 )}
             </div>
-            <Notification isOpen={isOpenPopUp} onClose={closePopUp}/>
+            <Notification isOpen={isOpenPopUp} onClose={closePopUp} />
         </div>
     );
 }
