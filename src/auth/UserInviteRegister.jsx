@@ -1,14 +1,14 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {Link, useHistory, useLocation} from 'react-router-dom';
-import {useDispatch} from "react-redux";
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useHistory, useLocation } from 'react-router-dom';
+import { useDispatch } from "react-redux";
 import useValidation from "../utils/use-validation.jsx";
 import FormInput from "../components/FormInput.jsx";
 import LoginImage from '../images/register.jpg';
-import {RegisterSchema} from "../state/domains/authModels.js";
-import {confirmSignIn} from "aws-amplify/auth";
-import {doGetWhoAmI} from "../state/slice/authSlice.js";
-import {fetchUserInvitedOrganization, registerInvitedUser} from "../state/slice/registerSlice.js";
-import {toast} from "react-toastify";
+import { RegisterSchema } from "../state/domains/authModels.js";
+import { confirmSignIn } from "aws-amplify/auth";
+import { doGetWhoAmI } from "../state/slice/authSlice.js";
+import { fetchUserInvitedOrganization, registerInvitedUser } from "../state/slice/registerSlice.js";
+import { toast } from "react-toastify";
 
 const RegisterForm = () => {
   const { addToast } = useToasts();
@@ -38,7 +38,7 @@ const RegisterForm = () => {
   }, [email]);
 
   useEffect(() => {
-    setRegisterDetails({...registerDetails, username: email});
+    setRegisterDetails({ ...registerDetails, username: email });
   }, []);
 
   const handleFormChange = (name, value) => {
@@ -78,7 +78,7 @@ const RegisterForm = () => {
         toast.error('Error setting new password:');
       }
     } catch (e) {
-      addToast(e.message, {appearance: 'error'});
+      addToast(e.message, { appearance: 'error' });
     }
   };
 
@@ -97,7 +97,7 @@ const RegisterForm = () => {
                 <FormInput
                   type="text"
                   name="organization"
-                  formValues={{organization: organization}}
+                  formValues={{ organization: organization }}
                   placeholder="Organization"
                   disabled={true}
                   formErrors={formErrors}
@@ -107,60 +107,60 @@ const RegisterForm = () => {
               <div className="mb-6 flex">
                 <div className="mr-4 w-1/2">
                   <FormInput
-                      type="text"
-                      name="firstName"
-                      formValues={registerDetails}
-                      placeholder="First Name"
-                      onChange={({target: {name, value}}) => handleFormChange(name, value)}
-                      formErrors={formErrors}
-                      showErrors={isValidationErrorsShown}
+                    type="text"
+                    name="firstName"
+                    formValues={registerDetails}
+                    placeholder="First Name"
+                    onChange={({ target: { name, value } }) => handleFormChange(name, value)}
+                    formErrors={formErrors}
+                    showErrors={isValidationErrorsShown}
                   />
                 </div>
                 <div className="w-1/2">
                   <FormInput
-                      type="text"
-                      name="lastName"
-                      formValues={registerDetails}
-                      placeholder="Last Name"
-                      onChange={({target: {name, value}}) => handleFormChange(name, value)}
-                      formErrors={formErrors}
-                      showErrors={isValidationErrorsShown}
+                    type="text"
+                    name="lastName"
+                    formValues={registerDetails}
+                    placeholder="Last Name"
+                    onChange={({ target: { name, value } }) => handleFormChange(name, value)}
+                    formErrors={formErrors}
+                    showErrors={isValidationErrorsShown}
                   />
                 </div>
               </div>
               <div className="mb-6">
                 <FormInput
-                    type="text"
-                    name="username"
-                    formValues={registerDetails}
-                    placeholder="Email"
-                    onChange={({ target: { name, value } }) =>
-                        handleFormChange(name, value)
-                    }
-                    formErrors={formErrors}
-                    showErrors={isValidationErrorsShown}
+                  type="text"
+                  name="username"
+                  formValues={registerDetails}
+                  placeholder="Email"
+                  onChange={({ target: { name, value } }) =>
+                    handleFormChange(name, value)
+                  }
+                  formErrors={formErrors}
+                  showErrors={isValidationErrorsShown}
                 />
               </div>
               <div className="mb-6">
                 <FormInput
-                    type="password"
-                    name="password"
-                    formValues={registerDetails}
-                    placeholder="Password"
-                    onChange={({target: {name, value}}) => handleFormChange(name, value)}
-                    formErrors={formErrors}
-                    showErrors={isValidationErrorsShown}
+                  type="password"
+                  name="password"
+                  formValues={registerDetails}
+                  placeholder="Password"
+                  onChange={({ target: { name, value } }) => handleFormChange(name, value)}
+                  formErrors={formErrors}
+                  showErrors={isValidationErrorsShown}
                 />
               </div>
               <div className="mb-6">
                 <FormInput
-                    type="password"
-                    name="confirmPassword"
-                    formValues={registerDetails}
-                    placeholder="Confirm Password"
-                    onChange={({target: {name, value}}) => handleFormChange(name, value)}
-                    formErrors={formErrors}
-                    showErrors={isValidationErrorsShown}
+                  type="password"
+                  name="confirmPassword"
+                  formValues={registerDetails}
+                  placeholder="Confirm Password"
+                  onChange={({ target: { name, value } }) => handleFormChange(name, value)}
+                  formErrors={formErrors}
+                  showErrors={isValidationErrorsShown}
                 />
               </div>
               <input
@@ -172,11 +172,11 @@ const RegisterForm = () => {
             <div className="text-center mt-5 text-textColor">
               Already have an account?
               <Link
-                  to={{
-                    pathname: "/login",
-                    state: {from: location}
-                  }}
-                  className="text-primary-pink"
+                to={{
+                  pathname: "/auth",
+                  state: { from: location }
+                }}
+                className="text-primary-pink"
               >
                 Login
               </Link>

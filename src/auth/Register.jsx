@@ -173,12 +173,12 @@ function Register() {
               </button>
               <div className="text-center mt-5 text-text-color">
                 Already have an account?
-                <Link
-                  to="/login"
-                  className="text-primary-pink ml-2"
+                <span
+                  onClick={handleLogin}
+                  className="text-primary-pink ml-2 cursor-pointer"
                 >
                   Login
-                </Link>
+                </span>
               </div>
             </form>
           </div>

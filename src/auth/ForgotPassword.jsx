@@ -92,7 +92,7 @@ const ForgotPassword = () => {
           </button>
         </form>
         <div className="text-center mt-8 text-text-color">
-          <Link to="/login" className="text-primary-pink">
+          <Link to="/auth" className="text-primary-pink">
             Back to Login
           </Link>
         </div>

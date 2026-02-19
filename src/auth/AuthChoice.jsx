@@ -6,8 +6,8 @@ import { signInWithRedirect } from "aws-amplify/auth";
 const AuthChoice = () => {
     const history = useHistory();
 
-    const handleLogin = () => {
-        history.push("/login");
+    const handleLogin = async () => {
+        await signInWithRedirect();
     }
 
     return (
