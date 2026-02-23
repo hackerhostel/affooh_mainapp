@@ -1,5 +1,5 @@
 import './App.css';
-import {BrowserRouter, Route, Switch} from 'react-router-dom';
+import { BrowserRouter, Route, Switch, Redirect } from 'react-router-dom';
 
 import AuthGuard from './auth/AuthGuard';
 import ForgotPassword from './auth/ForgotPassword';
@@ -18,14 +18,12 @@ function App() {
       <Switch>
         <Route path="/auth">
           <PublicGuard>
-            <AuthChoice/>
+            <AuthChoice />
           </PublicGuard>
         </Route>
 
         <Route path="/login">
-          <PublicGuard>
-            <Login />
-          </PublicGuard>
+          <Redirect to="/auth" />
         </Route>
 
         <Route path="/register">

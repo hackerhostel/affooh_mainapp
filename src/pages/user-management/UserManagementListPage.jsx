@@ -1,7 +1,7 @@
-import React, {useState} from "react";
-import {EllipsisVerticalIcon} from "@heroicons/react/24/outline";
+import React, { useState } from "react";
+import { EllipsisVerticalIcon } from "@heroicons/react/24/outline";
 import ConfirmationDialog from "../../components/ConfirmationDialog.jsx";
-import {toast} from "react-toastify";
+import { toast } from "react-toastify";
 
 const UserManagementListPage = ({ onDocumentSelect }) => {
 
@@ -9,16 +9,16 @@ const UserManagementListPage = ({ onDocumentSelect }) => {
   const [documents, setDocuments] = useState([
     { id: 1, name: "User", classification: "Manage Organization Users" },
     { id: 2, name: "User Roles", classification: "Manage Organization User Roles" },
-    { id: 3, name: "Teams", classification: "Manage Organization Teams" }, 
+    // { id: 3, name: "Teams", classification: "Manage Organization Teams" }, 
   ]);
 
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState(null);
 
-const getColorClass = () => {
-  return "text-yellow-500";
-};
+  const getColorClass = () => {
+    return "text-yellow-500";
+  };
 
 
   const toggleMenuOpen = (index, event) => {
