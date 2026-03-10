@@ -1,10 +1,12 @@
 import React, { useEffect } from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { useLocation } from "react-router-dom";
+import { useLocation, Route, Switch, Redirect } from "react-router-dom";
 import CustomFieldPage from "./customField";
 import Screens from "./screens";
 import TaskTypes from "./taskTypes";
 import UserRoles from "./userRoles";
+import AddUserRole from "./AddUserRole";
+import EditUserRole from "./EditUserRole";
 import OAuthSettings from "./OAuthSettings.jsx";
 import GitIntegration from "./GitIntegration.jsx";
 import Templates from "./templates.jsx";
@@ -25,14 +27,36 @@ const SettingContentPage = () => {
     } else if (view === 'gitIntegration') {
       dispatch(setSettingView('gitIntegration'));
     }
-  }, [location.search, dispatch]);
+    
+    // Sync selectedView based on path if needed
+    if (location.pathname.includes('/user-roles')) {
+      dispatch(setSettingView('userRoles'));
+    }
+  }, [location.search, location.pathname, dispatch]);
 
   return (
-    <div>
+    <div className="h-full">
+      {selectedView === "userRoles" && (
+        <Switch>
+          <Route path="/settings/user-roles/add">
+            <AddUserRole />
+          </Route>
+          <Route path="/settings/user-roles/edit/:roleId">
+            <EditUserRole />
+          </Route>
+          <Route path="/settings/user-roles">
+            <UserRoles />
+          </Route>
+          {/* Default to UserRoles for /settings if selectedView is userRoles */}
+          <Route path="/settings">
+            <UserRoles />
+          </Route>
+        </Switch>
+      )}
+
       {selectedView === "customFields" && <CustomFieldPage />}
       {selectedView === "screens" && <Screens />}
       {selectedView === "taskTypes" && <TaskTypes />}
-      {selectedView === "userRoles" && <UserRoles />}
       {selectedView === "notifications" && <div className="p-6 text-gray-500">Notifications page - Coming soon</div>}
       {selectedView === "oauthSettings" && <OAuthSettings />}
       {selectedView === "gitIntegration" && <GitIntegration />}
@@ -42,4 +66,5 @@ const SettingContentPage = () => {
 };
 
 export default SettingContentPage;
+
 

@@ -51,11 +51,11 @@ const UserRoles = () => {
     if (roleToDelete) {
       try {
         await dispatch(doDeleteRole(roleToDelete.id)).unwrap();
-        toast.success();
+        toast.success(`User role "${roleToDelete.name}" deleted successfully`);
         setDeleteDialogOpen(false);
         setRoleToDelete(null);
       } catch (error) {
-        toast.error();
+        toast.error(error || `Failed to delete user role "${roleToDelete.name}"`);
       }
     }
   };

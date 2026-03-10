@@ -40,20 +40,20 @@ const AddUserRole = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!roleName.trim()) {
-      toast.error();
+      toast.error('Role name is required');
       return;
     }
 
     console.log('handleSubmit - rolePermissions:', rolePermissions);
 
     if (!rolePermissions || !rolePermissions.modules || rolePermissions.modules.length === 0) {
-      toast.error();
+      toast.error('At least one module permission must be selected');
       return;
     }
 
     // Validate that permissions object exists and is not empty
     if (!rolePermissions.permissions || typeof rolePermissions.permissions !== 'object') {
-      toast.error();
+      toast.error('Invalid permissions structure');
       return;
     }
 
@@ -71,13 +71,13 @@ const AddUserRole = () => {
 
     try {
       await dispatch(doCreateRole(roleData)).unwrap();
-      toast.success();
+      toast.success('User role created successfully');
       // Navigate back to user roles list on success
       history.push('/settings?view=userRoles');
     } catch (error) {
       console.error('Error creating role:', error);
       console.error('Error details:', error);
-      toast.error();
+      toast.error(error || 'Failed to create user role');
     }
   };
 
