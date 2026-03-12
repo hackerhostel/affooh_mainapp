@@ -1,10 +1,11 @@
-import React, {useRef, useState} from "react";
-import {Link, useHistory} from "react-router-dom";
-import {resetPassword} from "aws-amplify/auth";
+import React, { useRef, useState } from "react";
+import { Link, useHistory } from "react-router-dom";
+import { resetPassword } from "aws-amplify/auth";
 import FormInput from "../components/FormInput.jsx";
 import useValidation from "../utils/use-validation.jsx";
-import {ForgotPasswordSchema} from "../state/domains/authModels.js";
-import {toast} from "react-toastify";
+import { ForgotPasswordSchema } from "../state/domains/authModels.js";
+import { toast } from "react-toastify";
+import Spinner from "../components/Spinner.jsx";
 
 const ForgotPassword = () => {
   const history = useHistory();
@@ -57,10 +58,10 @@ const ForgotPassword = () => {
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div
         style={{ width: "650px", height: "450px" }}
-        className="bg-white text-center shadow-xl rounded-lg p-6"
+        className="bg-white text-center shadow-2xl rounded-2xl p-10"
       >
-        <p className="text-4xl font-medium mt-16">Forgot Password</p>
-        <span className="block mt-6 text-gray-600">
+        <p className="text-4xl font-bold mt-10">Forgot Password</p>
+        <span className="block mt-6 text-text-color font-light">
           Enter your email to receive a verification code
         </span>
         <form
@@ -84,14 +85,14 @@ const ForgotPassword = () => {
           <button
             type="submit"
             style={{ width: "420px" }}
-            className="btn-login"
+            className="btn-login flex items-center justify-center m-auto"
             disabled={loading}
           >
-            {loading ? "Sending..." : "Send Code"}
+            {loading ? <Spinner className="w-5 h-5 text-white" /> : "Send Code"}
           </button>
         </form>
-        <div className="text-center mt-5 text-gray-600">
-          <Link to="/login" className="text-primary-pink">
+        <div className="text-center mt-8 text-text-color">
+          <Link to="/auth" className="text-primary-pink">
             Back to Login
           </Link>
         </div>

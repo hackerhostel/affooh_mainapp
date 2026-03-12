@@ -12,6 +12,7 @@ import {getBuildConstant} from "./constants/build-constants";
 import {store} from "./state";
 import {getAPIBaseURL} from "./utils/commonUtils";
 import "devextreme/dist/css/dx.material.blue.light.css";
+import "react-toastify/dist/ReactToastify.css";
 import {ToastContainer} from "react-toastify";
 
 axios.defaults.baseURL = getAPIBaseURL();

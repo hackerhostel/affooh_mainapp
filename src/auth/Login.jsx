@@ -1,13 +1,14 @@
-import React, {useRef, useState} from 'react';
-import {signInWithRedirect} from 'aws-amplify/auth';
+import React, { useRef, useState } from 'react';
+import { signIn } from 'aws-amplify/auth';
 import useValidation from "../utils/use-validation.jsx";
 import FormInput from "../components/FormInput.jsx";
-import {Link, useHistory, useLocation} from "react-router-dom";
-import {useDispatch} from "react-redux";
+import { Link, useHistory, useLocation } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import LoginImage from '../images/login.png';
-import {LoginSchema} from "../state/domains/authModels.js";
-import {doGetWhoAmI} from "../state/slice/authSlice.js";
-import {toast} from "react-toastify";
+import { LoginSchema } from "../state/domains/authModels.js";
+import { doGetWhoAmI } from "../state/slice/authSlice.js";
+import { toast } from "react-toastify";
+import Spinner from "../components/Spinner.jsx";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -39,14 +40,15 @@ const Login = () => {
     }
 
     try {
-      // const response = await signIn(loginDetails)
+      const { nextStep } = await signIn({
+        username: loginDetails.username,
+        password: loginDetails.password
+      });
 
-      await signInWithRedirect();
-
-      // if (response.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-      //   history.push('/inviteUserRegister', {email: loginDetails.username});
-      //   return;
-      // }
+      if (nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+        history.push('/inviteUserRegister', { email: loginDetails.username });
+        return;
+      }
 
       dispatch(doGetWhoAmI())
       toast.success('logged in Successfully')
@@ -70,7 +72,7 @@ const Login = () => {
   //     history.push('/forgot-password')
   //   }
   // };
- 
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <div className='flex flex-col md:flex-row bg-white shadow-2xl rounded-2xl m-24'>
@@ -78,8 +80,8 @@ const Login = () => {
         <div className='flex flex-col pt-24 pl-28' style={{ width: '650px', height: '727px' }}>
           <div className='w-3/4'>
             <div>
-              <h3 style={{fontWeight:"bold", fontSize:"42px"}} className="mb-3">Log In</h3>
-              <span className=" font-light text-lg text-textColor">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore</span>
+              <h3 style={{ fontWeight: "bold", fontSize: "42px" }} className="mb-3">Log In</h3>
+              <span className=" font-light text-lg text-text-color">Please Login to continue to your Account</span>
             </div>
             <form className="mt-4 space-y-6" ref={formRef} onSubmit={login}>
               <div className="mb-6">
@@ -111,13 +113,15 @@ const Login = () => {
                 </div>
                 <Link to="/forgot-password" className="text-md text-mainColor">Forgot password</Link>
               </div>
-              <input
+              <button
                 type="submit"
-                value="Login"
-                className="btn-login"
-              />
+                className="btn-login flex items-center justify-center"
+                disabled={loading}
+              >
+                {loading ? <Spinner className="w-5 h-5 text-white" /> : "Login"}
+              </button>
             </form>
-            <div className="text-center mt-5 text-textColor">
+            <div className="text-center mt-5 text-text-color">
               Don't have an account?
               <span onClick={navigateToRegister} className="text-primary-pink cursor-pointer"> Register Now</span>
             </div>

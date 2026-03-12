@@ -1,13 +1,13 @@
-import React, {useRef, useState} from "react";
-import {useDispatch} from "react-redux";
-import {Link, useHistory, useLocation} from "react-router-dom";
-import {toast} from "react-toastify";
+import React, { useRef, useState } from "react";
+import { useDispatch } from "react-redux";
+import { Link, useHistory, useLocation } from "react-router-dom";
+import { toast } from "react-toastify";
 import FormInput from "../components/FormInput";
 import LoginImage from "../images/register.jpg";
-import {RegisterSchema} from "../state/domains/authModels";
-import {doRegisterUser} from "../state/slice/registerSlice";
+import { RegisterSchema } from "../state/domains/authModels";
+import { doRegisterUser } from "../state/slice/registerSlice";
 import useValidation from "../utils/use-validation";
-import {signInWithRedirect} from "aws-amplify/auth";
+import { signInWithRedirect } from "aws-amplify/auth";
 
 function Register() {
   const dispatch = useDispatch();
@@ -90,82 +90,82 @@ function Register() {
             <form className="mt-4 space-y-6" ref={formRef} onSubmit={register}>
               <div className="mb-6">
                 <FormInput
-                    type="text"
-                    name="organization"
-                    formValues={registerDetails}
-                    placeholder="Organization"
-                    onChange={({target: {name, value}}) =>
-                        handleFormChange(name, value)
-                    }
-                    formErrors={formErrors}
-                    showErrors={isValidationErrorsShown}
+                  type="text"
+                  name="organization"
+                  formValues={registerDetails}
+                  placeholder="Organization"
+                  onChange={({ target: { name, value } }) =>
+                    handleFormChange(name, value)
+                  }
+                  formErrors={formErrors}
+                  showErrors={isValidationErrorsShown}
                 />
               </div>
               <div className="mb-6 flex">
                 <div className="mr-4 w-1/2">
                   <FormInput
-                      type="text"
-                      name="firstName"
-                      formValues={registerDetails}
-                      placeholder="First Name"
-                      onChange={({target: {name, value}}) =>
-                          handleFormChange(name, value)
-                      }
-                      formErrors={formErrors}
-                      showErrors={isValidationErrorsShown}
+                    type="text"
+                    name="firstName"
+                    formValues={registerDetails}
+                    placeholder="First Name"
+                    onChange={({ target: { name, value } }) =>
+                      handleFormChange(name, value)
+                    }
+                    formErrors={formErrors}
+                    showErrors={isValidationErrorsShown}
                   />
                 </div>
                 <div className="w-1/2">
                   <FormInput
-                      type="text"
-                      name="lastName"
-                      formValues={registerDetails}
-                      placeholder="Last Name"
-                      onChange={({target: {name, value}}) =>
-                          handleFormChange(name, value)
-                      }
-                      formErrors={formErrors}
-                      showErrors={isValidationErrorsShown}
+                    type="text"
+                    name="lastName"
+                    formValues={registerDetails}
+                    placeholder="Last Name"
+                    onChange={({ target: { name, value } }) =>
+                      handleFormChange(name, value)
+                    }
+                    formErrors={formErrors}
+                    showErrors={isValidationErrorsShown}
                   />
                 </div>
               </div>
               <div className="mb-6">
                 <FormInput
-                    type="text"
-                    name="username"
-                    formValues={registerDetails}
-                    placeholder="Email"
-                    onChange={({target: {name, value}}) =>
-                        handleFormChange(name, value)
-                    }
-                    formErrors={formErrors}
-                    showErrors={isValidationErrorsShown}
+                  type="text"
+                  name="username"
+                  formValues={registerDetails}
+                  placeholder="Email"
+                  onChange={({ target: { name, value } }) =>
+                    handleFormChange(name, value)
+                  }
+                  formErrors={formErrors}
+                  showErrors={isValidationErrorsShown}
                 />
               </div>
               <div className="mb-6">
                 <FormInput
-                    type="password"
-                    name="password"
-                    formValues={registerDetails}
-                    placeholder="Password"
-                    onChange={({target: {name, value}}) =>
-                        handleFormChange(name, value)
-                    }
-                    formErrors={formErrors}
-                    showErrors={isValidationErrorsShown}
+                  type="password"
+                  name="password"
+                  formValues={registerDetails}
+                  placeholder="Password"
+                  onChange={({ target: { name, value } }) =>
+                    handleFormChange(name, value)
+                  }
+                  formErrors={formErrors}
+                  showErrors={isValidationErrorsShown}
                 />
               </div>
               <div className="mb-6 ">
                 <FormInput
-                    type="password"
-                    name="confirmPassword"
-                    formValues={registerDetails}
-                    placeholder="Confirm Password"
-                    onChange={({target: {name, value}}) =>
-                        handleFormChange(name, value)
-                    }
-                    formErrors={formErrors}
-                    showErrors={isValidationErrorsShown}
+                  type="password"
+                  name="confirmPassword"
+                  formValues={registerDetails}
+                  placeholder="Confirm Password"
+                  onChange={({ target: { name, value } }) =>
+                    handleFormChange(name, value)
+                  }
+                  formErrors={formErrors}
+                  showErrors={isValidationErrorsShown}
                 />
               </div>
               <button type="submit" className="btn-login" disabled={loading}>
@@ -173,22 +173,22 @@ function Register() {
               </button>
               <div className="text-center mt-5 text-text-color">
                 Already have an account?
-                <Link
-                    onClick={handleLogin}
-                    className="text-primary-pink ml-2"
+                <span
+                  onClick={handleLogin}
+                  className="text-primary-pink ml-2 cursor-pointer"
                 >
                   Login
-                </Link>
+                </span>
               </div>
             </form>
           </div>
         </div>
         {/* Right side */}
-        <div className="hidden md:block" style={{width: "520px"}}>
+        <div className="hidden md:block" style={{ width: "520px" }}>
           <img
-              className="w-full h-full rounded-r-2xl object-cover"
-              src={LoginImage}
-              alt="Register"
+            className="w-full h-full rounded-r-2xl object-cover"
+            src={LoginImage}
+            alt="Register"
           />
         </div>
       </div>
