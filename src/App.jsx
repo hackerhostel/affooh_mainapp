@@ -12,6 +12,7 @@ import UserInviteRegister from './auth/UserInviteRegister';
 import Dashboard from './pages/Dashboard';
 import AuthChoice from "./auth/AuthChoice.jsx";
 
+
 function App() {
   return (
     <BrowserRouter>
