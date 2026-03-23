@@ -26,7 +26,7 @@ const existingConfig = Amplify.getConfig();
 
 const APP_URL = import.meta.env.DEV
     ? "http://localhost:5173"
-    : "https://production-app.affooh.com";
+    : "https://app.affooh.com";
 
 Amplify.configure({
     ...existingConfig,
@@ -46,7 +46,7 @@ Amplify.configure({
             ...existingConfig.Auth.Cognito,
             loginWith: {
                 oauth: {
-                    domain: "affooh-production-auth.auth.us-east-1.amazoncognito.com",
+                    domain: "auth.affooh.com",
                     scopes: ["openid", "email", "profile"],
                     redirectSignIn: [`${APP_URL}/auth/callback`],
                     redirectSignOut: [`${APP_URL}/logout`],
