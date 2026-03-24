@@ -49,15 +49,20 @@ function Register() {
 
     try {
       // Dispatch registration action
-      await dispatch(doRegisterUser(registerDetails));
+      const result = await dispatch(doRegisterUser(registerDetails));
 
-      // Instead of redirecting to login, redirect to OTP verification
+      if (result.meta.requestStatus === 'rejected') {
+        toast.error(result.payload || 'Registration Failed! Please try again.');
+        return;
+      }
+
       toast.success('Registration successful! Please verify your email with the OTP sent.');
 
-      // Redirect to OTP verification page with email
+      // Pass userSub to OTP page - needed for confirmSignUp
       history.push("/otp-verification", {
         email: registerDetails.username,
-        isPasswordReset: false, // Explicitly mark this is not password reset flow
+        userSub: result.payload?.body?.userSub,
+        isPasswordReset: false,
       });
     } catch (error) {
       toast.error('Registration Failed! Please try again.')

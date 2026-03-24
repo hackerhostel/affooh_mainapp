@@ -23,6 +23,7 @@ const OTPVerification = () => {
   const timerRef = useRef(null);
   const location = useLocation();
   const email = location.state?.email;
+  const userSub = location.state?.userSub; // Cognito UUID for confirmSignUp
   const isPasswordReset = location.state?.isPasswordReset;
 
   useEffect(() => {
@@ -115,7 +116,7 @@ const OTPVerification = () => {
         // For registration flow - verify OTP and redirect to login
         const result = await dispatch(
           doVerifyOTP({
-            username: email,
+            username: userSub || email, // use userSub (UUID) if available, fallback to email
             otp: otpCode,
           })
         );
