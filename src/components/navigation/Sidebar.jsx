@@ -114,16 +114,11 @@ function Sidebar() {
                         className="absolute left-20 top-16 w-80 bg-white rounded-lg shadow-xl border border-gray-100 py-3 z-50"
                     >
                         {[
-                            { name: "Project Management", url: "https://dev-pm.affooh.com/dashboard/", icon: <PresentationChartLineIcon /> },
-                            { name: "Compliance Management", url: "https://dev-cm.affooh.com/dashboard/", icon: <DocumentChartBarIcon /> },
-                            { name: "Human Resource Management", url: "https://dev-hr.affooh.com/dashboard/", icon: <UserGroupIcon /> },
-                            { name: "Finance Management", url: "https://dev-fm.affooh.com/dashboard/", icon: <BanknotesIcon /> },
-                            { name: "Sales Management", url: "https://dev-sm.affooh.com/dashboard/", icon: <BriefcaseIcon /> },
-                            {name: "Project Management", url: "https://dev-pm.affooh.com/dashboard/", icon: <PresentationChartLineIcon/>},
-                            {name: "Compliance Management", url: "https://dev-cm.affooh.com/dashboard/", icon: <DocumentChartBarIcon/>},
-                            {name: "Human Resource Management", url: "https://dev-hr.affooh.com/dashboard/", icon: <UserGroupIcon/>},
-                            {name: "Finance Management", url: "https://dev-fm.affooh.com/dashboard/", icon: <BanknotesIcon/>},
-                            {name: "Sales Management", url: "https://dev-sales.affooh.com/dashboard/", icon: <BriefcaseIcon/>}
+                            { name: "Project Management", url: "https://pm.affooh.com/dashboard/", icon: <PresentationChartLineIcon /> },
+                            { name: "Compliance Management", url: "https://cm.affooh.com/dashboard/", icon: <DocumentChartBarIcon /> },
+                            { name: "Human Resource Management", url: "https://hr.affooh.com/dashboard/", icon: <UserGroupIcon /> },
+                            { name: "Finance Management", url: "https://fm.affooh.com/dashboard/", icon: <BanknotesIcon /> },
+                            { name: "Sales Management", url: "https://sales.affooh.com/dashboard/", icon: <BriefcaseIcon /> },
                         ].map((item, index) => (
                             <a
                                 key={index}
