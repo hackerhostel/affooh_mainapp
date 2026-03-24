@@ -113,19 +113,14 @@ const OTPVerification = () => {
         toast.success('Verification successful')
       } else {
         // For registration flow - verify OTP and redirect to login
-        const result = await dispatch(
+        await dispatch(
           doVerifyOTP({
             username: email,
             otp: otpCode,
           })
         );
 
-        if (result.meta.requestStatus === 'rejected') {
-          toast.error(result.payload || 'Verification failed. Please check your code and try again.');
-          return;
-        }
-
-        toast.success('Account verification successful. Please login.');
+        toast.success('Account verification successful. Please login.')
         await signInWithRedirect();
       }
     } catch (error) {
