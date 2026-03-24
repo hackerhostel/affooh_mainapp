@@ -11,11 +11,17 @@ import Register from './auth/Register';
 import UserInviteRegister from './auth/UserInviteRegister';
 import Dashboard from './pages/Dashboard';
 import AuthChoice from "./auth/AuthChoice.jsx";
+import OAuthCallback from "./auth/OAuthCallback.jsx";
 
 function App() {
   return (
     <BrowserRouter>
       <Switch>
+        {/* OAuth callback route must be before /auth to avoid PublicGuard redirect */}
+        <Route path="/auth/callback">
+          <OAuthCallback />
+        </Route>
+
         <Route path="/auth">
           <PublicGuard>
             <AuthChoice />
