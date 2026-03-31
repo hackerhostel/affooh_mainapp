@@ -36,6 +36,8 @@ function Sidebar() {
         try {
             localStorage.clear();
             sessionStorage.clear();
+            // 🆕 Set this to inform other tabs on same-origin (dev)
+            localStorage.setItem('logout-event', Date.now().toString());
             await signOut({ global: true });
             window.location.href = "/auth";
         } catch (err) {

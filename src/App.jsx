@@ -13,7 +13,10 @@ import Dashboard from './pages/Dashboard';
 import AuthChoice from "./auth/AuthChoice.jsx";
 import OAuthCallback from "./auth/OAuthCallback.jsx";
 
+import { useGlobalLogout } from "./hooks/useGlobalLogout";
+
 function App() {
+  useGlobalLogout();
   return (
     <BrowserRouter>
       <Switch>
