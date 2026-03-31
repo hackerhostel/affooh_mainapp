@@ -34,14 +34,23 @@ function Sidebar() {
     const handleSignOut = async () => {
         setLoading(true);
         try {
-            localStorage.clear();
-            sessionStorage.clear();
+            // Broadcast logout to all open tabs/windows across all modules
+            const logoutChannel = new BroadcastChannel("affooh_logout");
+            logoutChannel.postMessage({ type: "LOGOUT" });
+            logoutChannel.close();
+
+            // Also set a localStorage flag so other-origin modules can detect logout
+            localStorage.setItem("affooh_global_logout", Date.now().toString());
+
             await signOut({ global: true });
-            window.location.href = "/auth";
         } catch (err) {
             console.error("Logout failed", err);
         } finally {
+            // Always clear and redirect regardless of signOut success/failure
+            localStorage.clear();
+            sessionStorage.clear();
             setLoading(false);
+            window.location.href = "/auth";
         }
     };
 
