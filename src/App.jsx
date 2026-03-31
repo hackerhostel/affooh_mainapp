@@ -12,17 +12,11 @@ import UserInviteRegister from './auth/UserInviteRegister';
 import Dashboard from './pages/Dashboard';
 import AuthChoice from "./auth/AuthChoice.jsx";
 import OAuthCallback from "./auth/OAuthCallback.jsx";
-import LogoutPage from "./auth/LogoutPage.jsx";
 
 function App() {
   return (
     <BrowserRouter>
       <Switch>
-        {/* Cognito redirectSignOut target — clears session and redirects to /auth */}
-        <Route path="/logout">
-          <LogoutPage />
-        </Route>
-
         {/* OAuth callback route must be before /auth to avoid PublicGuard redirect */}
         <Route path="/auth/callback">
           <OAuthCallback />

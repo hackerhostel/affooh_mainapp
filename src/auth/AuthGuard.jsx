@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from "react";
 import {Route, useHistory, useLocation} from "react-router-dom";
-import {getCurrentUser, signOut} from "aws-amplify/auth";
+import {getCurrentUser} from "aws-amplify/auth";
 import LoadingPage from "../pages/LoadingPage.jsx";
 import {setupAuthorizationHeader} from "../utils/apiUtils.js";
 
@@ -10,19 +10,6 @@ const AuthGuard = ({ children, ...rest }) => {
   const location = useLocation();
   const history = useHistory();
   const [loading, setLoading] = useState(true);
-
-  // Listen for global logout broadcast from other tabs of same-origin apps
-  useEffect(() => {
-    const logoutChannel = new BroadcastChannel("affooh_logout");
-    logoutChannel.onmessage = (event) => {
-      if (event.data?.type === "LOGOUT") {
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.replace("/auth");
-      }
-    };
-    return () => logoutChannel.close();
-  }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
