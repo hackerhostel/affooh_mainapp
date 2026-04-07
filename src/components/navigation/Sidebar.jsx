@@ -31,21 +31,31 @@ function Sidebar() {
     const menuRef = useRef(null);
     const menuButtonRef = useRef(null);
 
-    const handleSignOut = async () => {
-        setLoading(true);
-        try {
-            localStorage.clear();
-            sessionStorage.clear();
-            // 🆕 Set this to inform other tabs on same-origin (dev)
-            localStorage.setItem('logout-event', Date.now().toString());
-            await signOut({ global: true });
-            window.location.href = "/auth";
-        } catch (err) {
-            console.error("Logout failed", err);
-        } finally {
-            setLoading(false);
-        }
-    };
+      const handleSignOut = async () => {
+    setLoading(true);
+    try {
+      // API call MUST happen before tokens are cleared from local storage
+      await signOut({ global: true });
+      
+      // Set cross-subdomain cookie valid for 15 seconds to act as an event broadcaster
+      const hostname = window.location.hostname;
+      const domainParams = hostname.includes('affooh.com') ? '; domain=.affooh.com' : '';
+      document.cookie = `global-logout=true; path=/; max-age=15${domainParams}`;
+      
+      // Set same-origin event
+      localStorage.setItem('logout-event', Date.now().toString());
+      
+      // Finally clear local logs
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      window.location.href = "/auth";
+    } catch (err) {
+      console.error("Logout failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
     const userProfile = () => {
         history.push('/profile')
