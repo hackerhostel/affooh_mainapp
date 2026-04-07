@@ -8,6 +8,22 @@ import {getCurrentUser, signOut} from "aws-amplify/auth";
 export const useGlobalLogout = () => {
     useEffect(() => {
         const checkAuthStatus = async () => {
+            const publicPaths = [
+                "/auth",
+                "/login",
+                "/register",
+                "/forgot-password",
+                "/reset-password" ,
+                "/otp-verification",
+                "/inviteUserRegister"
+            ];
+            const currentPath = window.location.pathname;
+
+            // If we are already on an auth-related public page, we don't need to force logout/redirect
+            if (publicPaths.some(path => currentPath.startsWith(path))) {
+                return;
+            }
+
             try {
                 // Amplify getCurrentUser() checks if a user is technically logged in locally.
                 // For a more robust check in a global logout scenario, we could use fetchAuthSession({ forceRefresh: true })
