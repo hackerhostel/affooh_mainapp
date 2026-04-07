@@ -31,6 +31,10 @@ function App() {
           </PublicGuard>
         </Route>
 
+        <Route path="/logout">
+          <Redirect to="/auth" />
+        </Route>
+
         <Route path="/login">
           <Redirect to="/auth" />
         </Route>

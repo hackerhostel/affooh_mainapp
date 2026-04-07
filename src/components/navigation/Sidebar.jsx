@@ -16,6 +16,7 @@ import { signOut } from 'aws-amplify/auth';
 import { Link, useHistory, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { clearAuthState, selectUser } from '../../state/slice/authSlice';
+import { AwsConfigAuth } from '../../auth/auth';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import Notification from "./NotificationPopup.jsx";
 import AffoohDots from "../../assets/dots.png";
@@ -52,11 +53,12 @@ function Sidebar() {
       // Finally clear local logs
       localStorage.clear();
       sessionStorage.clear();
+
+      // We redirect back to the main app logout uri being whitelisted in Cognito
+      const logoutUri = window.location.origin + "/logout"; 
+      const cognitoLogoutUrl = `https://auth.affooh.com/logout?client_id=${clientId}&logout_uri=${logoutUri}`;
       
-      // Redirect to catch-all auth page. 
-      // Note: If Amplify's Hosted UI redirect kicks in, this might be bypassed, 
-      // which is also fine as it would go to the Cognito logout URL first.
-      window.location.href = "/auth";
+      window.location.href = cognitoLogoutUrl;
     } catch (err) {
       console.error("Logout failed", err);
     } finally {
