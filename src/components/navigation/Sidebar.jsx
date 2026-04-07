@@ -37,7 +37,7 @@ function Sidebar() {
       // API call MUST happen before tokens are cleared from local storage
       await signOut({ global: true });
       
-      // Set cross-subdomain cookie valid for 15 seconds to act as an event broadcaster
+      // set cross-subdomain cookie valid for 15 seconds to act as an event broadcaster
       const hostname = window.location.hostname;
       const domainParams = hostname.includes('affooh.com') ? '; domain=.affooh.com' : '';
       document.cookie = `global-logout=true; path=/; max-age=15${domainParams}`;
@@ -49,7 +49,8 @@ function Sidebar() {
       localStorage.clear();
       sessionStorage.clear();
       
-      window.location.href = "/auth";
+      // Removed window.location.href = "/auth" here because it overrides 
+      // the AWS Amplify Hosted UI automatic redirect to the Cognito logout URL.
     } catch (err) {
       console.error("Logout failed", err);
     } finally {
