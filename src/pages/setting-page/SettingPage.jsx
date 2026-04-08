@@ -8,15 +8,11 @@ const SettingPage = () => {
     const currentCategory = useSelector(selectedCategory);
 
     const categories = [
-        { id: 'general', name: 'General' },
         { id: 'projectManagement', name: 'Project Management' },
         { id: 'integrations', name: 'Integrations' }
     ];
 
     const settingItems = {
-        general: [
-            { id: 'notifications', name: 'Notifications', description: 'Manage Notifications' }
-        ],
         projectManagement: [
             { id: 'customFields', name: 'Custom Fields', description: 'Manage Custom Fields' },
             { id: 'screens', name: 'Screens', description: 'Manage Screens' },

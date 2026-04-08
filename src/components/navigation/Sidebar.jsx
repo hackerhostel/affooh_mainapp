@@ -233,7 +233,18 @@ function Sidebar() {
                                         )}
                                     </Menu.Item>
 
-                                    <Menu.Item>
+                                    {/* <Menu.Item>
+                                        {({ active }) => (
+                                            <button
+                                                onClick={handleSettingsClick}
+                                                className={`${active ? "bg-gray-100" : ""} flex w-full items-center px-4 py-2 text-sm`}
+                                            >
+                                                <CogIcon className="w-4 h-4 mr-3" /> Settings
+                                            </button>
+                                        )}
+                                    </Menu.Item> */}
+
+                                    {/* <Menu.Item>
                                         {({ active }) => (
                                             <button
                                                 onClick={handleNotificationClick}
@@ -242,7 +253,7 @@ function Sidebar() {
                                                 <BellIcon className="w-4 h-4 mr-3" /> Notifications
                                             </button>
                                         )}
-                                    </Menu.Item>
+                                    </Menu.Item> */}
 
                                     <Menu.Item>
                                         {({ active }) => (

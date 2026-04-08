@@ -1,8 +1,8 @@
 import { createSlice } from "@reduxjs/toolkit";
 
 const initialState = {
-    settingView: "notifications",
-    selectedCategory: "general"
+    settingView: "customFields",
+    selectedCategory: "projectManagement"
 };
 
 const settingSlice = createSlice({

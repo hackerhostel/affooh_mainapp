@@ -31,7 +31,7 @@ const SettingContentPage = () => {
       {selectedView === "customFields" && <CustomFieldPage />}
       {selectedView === "screens" && <Screens />}
       {selectedView === "taskTypes" && <TaskTypes />}
-      {selectedView === "notifications" && <div className="p-6 text-gray-500">Notifications page - Coming soon</div>}
+      {/* {selectedView === "notifications" && <div className="p-6 text-gray-500">Notifications page - Coming soon</div>} */}
       {selectedView === "oauthSettings" && <OAuthSettings />}
       {selectedView === "gitIntegration" && <GitIntegration />}
       {selectedView === "templates" && <Templates />}
