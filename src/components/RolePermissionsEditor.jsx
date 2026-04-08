@@ -36,6 +36,7 @@ const RolePermissionsEditor = ({ template, initialPermissions = {}, onChange }) 
           )
         : false;
 
+      // Enable module if it has permissions OR if it's in the modules list
       if (hasEnabledPermissions || initialPermissions.modules?.includes(moduleName)) {
         modulesToEnable.push(moduleName);
       }
@@ -49,8 +50,11 @@ const RolePermissionsEditor = ({ template, initialPermissions = {}, onChange }) 
 
         if (typeof actions === 'object' && actions !== null) {
           Object.keys(actions).forEach((action) => {
+            // Use initial permission value if available, otherwise use template default
             const initialValue =
-              initialPermissions.permissions?.[moduleName]?.[category]?.[action] ?? false;
+              initialPermissions.permissions?.[moduleName]?.[category]?.[action] ?? 
+              actions[action] ?? 
+              false;
             initialPerms[moduleName][category][action] = initialValue;
           });
         }

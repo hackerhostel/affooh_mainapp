@@ -1,7 +1,4 @@
 import React, { useState } from "react";
-import { EllipsisVerticalIcon } from "@heroicons/react/24/outline";
-import ConfirmationDialog from "../../components/ConfirmationDialog.jsx";
-import { toast } from "react-toastify";
 
 const UserManagementListPage = ({ onDocumentSelect }) => {
 
@@ -12,35 +9,14 @@ const UserManagementListPage = ({ onDocumentSelect }) => {
     // { id: 3, name: "Teams", classification: "Manage Organization Teams" }, 
   ]);
 
-  const [selectedDoc, setSelectedDoc] = useState(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [openMenu, setOpenMenu] = useState(null);
+  const [activeDocId, setActiveDocId] = useState(1); // Track active document
 
   const getColorClass = () => {
     return "text-yellow-500";
   };
 
-
-  const toggleMenuOpen = (index, event) => {
-    event.stopPropagation();
-    setOpenMenu(openMenu === index ? null : index);
-  };
-
-  const handleDeleteClick = (doc) => {
-    setSelectedDoc(doc);
-    setIsDialogOpen(true);
-    setOpenMenu(null);
-  };
-
-  const handleConfirmDelete = () => {
-    if (selectedDoc) {
-      setDocuments((prev) => prev.filter((d) => d.id !== selectedDoc.id));
-      toast.success(`Document deleted successfully!`);
-    }
-    setIsDialogOpen(false);
-  };
-
   const handleDocumentClick = (doc) => {
+    setActiveDocId(doc.id); // Set active document
     if (onDocumentSelect) {
       onDocumentSelect(doc);
     }
@@ -55,7 +31,9 @@ const UserManagementListPage = ({ onDocumentSelect }) => {
           <div
             key={doc.id}
             onClick={() => handleDocumentClick(doc)}
-            className="relative flex justify-between items-center p-3 border rounded-md w-full gap-2 hover:bg-gray-100 cursor-pointer border-gray-200"
+            className={`relative flex justify-between items-center p-3 border rounded-md w-full gap-2 hover:bg-gray-100 cursor-pointer ${
+              activeDocId === doc.id ? 'border-primary-pink' : 'border-gray-200'
+            }`}
           >
             <div className="flex flex-col">
               <div className="font-medium text-gray-900">{doc.name}</div>
@@ -63,37 +41,9 @@ const UserManagementListPage = ({ onDocumentSelect }) => {
                 {doc.classification}
               </div>
             </div>
-
-            {/* Three-dot menu */}
-            <div className="relative">
-              <EllipsisVerticalIcon
-                onClick={(e) => toggleMenuOpen(index, e)}
-                className="w-5 h-5 text-gray-600 cursor-pointer"
-              />
-              {openMenu === index && (
-                <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-md shadow-md w-28 z-10">
-                  <button
-                    onClick={() => handleDeleteClick(doc)}
-                    className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
         ))
       )}
-
-      {/* Confirmation Dialog */}
-      <ConfirmationDialog
-        isOpen={isDialogOpen}
-        onClose={() => setIsDialogOpen(false)}
-        onConfirm={handleConfirmDelete}
-        message={
-          selectedDoc ? `Do you want to delete "${selectedDoc.name}"?` : ""
-        }
-      />
     </div>
   );
 };

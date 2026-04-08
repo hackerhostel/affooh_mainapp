@@ -82,20 +82,23 @@ function Sidebar() {
         setIsOpenPopUp(false);
     }
 
-    const MenuItem = ({ link, Icon }) => (
-        <Link
-            to={link}
-            className={`w-12 h-12 ${location.pathname === link
-                    ? 'bg-primary-pink'
-                    : 'bg-gray-200 hover:bg-secondary-pink'
-                } rounded-full flex items-center justify-center transition-colors duration-200`}
-        >
-            <Icon
-                className={`w-6 h-6 ${location.pathname === link ? 'text-white' : 'text-gray-700'
-                    }`}
-            />
-        </Link>
-    );
+    const MenuItem = ({ link, Icon }) => {
+        const isActive = location.pathname === link || location.pathname.startsWith(link + '/');
+        
+        return (
+            <Link
+                to={link}
+                className={`w-12 h-12 ${isActive
+                        ? 'bg-primary-pink'
+                        : 'bg-gray-200 hover:bg-secondary-pink'
+                    } rounded-full flex items-center justify-center transition-colors duration-200`}
+            >
+                <Icon
+                    className={`w-6 h-6 ${isActive ? 'text-white' : 'text-gray-700'}`}
+                />
+            </Link>
+        );
+    };
 
     useEffect(() => {
         function handleClickOutside(e) {
