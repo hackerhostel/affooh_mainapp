@@ -15,7 +15,6 @@ const SettingPage = () => {
 
     const settingItems = {
         general: [
-            { id: 'userRoles', name: 'User Roles', description: 'Manage User Roles' },
             { id: 'notifications', name: 'Notifications', description: 'Manage Notifications' }
         ],
         projectManagement: [
