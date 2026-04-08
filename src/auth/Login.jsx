@@ -8,7 +8,7 @@ import LoginImage from '../images/login.png';
 import { LoginSchema } from "../state/domains/authModels.js";
 import { doGetWhoAmI } from "../state/slice/authSlice.js";
 import { toast } from "react-toastify";
-import Spinner from "../components/Spinner.jsx";
+import AnimatedLoader from "../components/AnimatedLoader.jsx";
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -38,6 +38,8 @@ const Login = () => {
     if (loading) {
       return;
     }
+
+    setLoading(true);
 
     try {
       const { nextStep } = await signIn({
@@ -75,6 +77,13 @@ const Login = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      {loading && (
+        <AnimatedLoader 
+          fullScreen={true} 
+          message="Logging in..." 
+          animationType="jumpSlide"
+        />
+      )}
       <div className='flex flex-col md:flex-row bg-white shadow-2xl rounded-2xl m-24'>
         {/* Left side */}
         <div className='flex flex-col pt-24 pl-28' style={{ width: '650px', height: '727px' }}>
@@ -118,7 +127,7 @@ const Login = () => {
                 className="btn-login flex items-center justify-center"
                 disabled={loading}
               >
-                {loading ? <Spinner className="w-5 h-5 text-white" /> : "Login"}
+                Login
               </button>
             </form>
             <div className="text-center mt-5 text-text-color">
