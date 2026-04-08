@@ -37,7 +37,8 @@ const Header = () => {
 
       {/* Right Section */}
       <div className="flex items-center mr-6 space-x-3">
-        <div>
+        {/* Notification Icon - Hidden */}
+        {/* <div>
           <BellIcon onClick={openPopUp} className="w-7 h-7 cursor-pointer"/>
         </div>
 
@@ -45,8 +46,7 @@ const Header = () => {
           <Notification isOpen={isOpenPopUp} onClose={closePopUp}/>
         </div>
 
-        {/* Divider */}
-        <div className="border-l border-gray-300 h-8"></div>
+        <div className="border-l border-gray-300 h-8"></div> */}
 
         {/* User Avatar and Menu */}
         <div className="h-20 flex items-center justify-center px-2 py-4">

@@ -160,7 +160,7 @@ function Sidebar() {
             </div>
 
             <div className="flex-grow flex flex-col items-center py-5 space-y-6">
-                {/*<MenuItem link="/dashboard" Icon={Squares2X2Icon}/>*/}
+                <MenuItem link="/dashboard" Icon={Squares2X2Icon}/>
                 <MenuItem link="/user-management" Icon={UserIcon} />
                 {/*<MenuItem link="/chat" Icon={ChatBubbleOvalLeftIcon}/>*/}
                 <MenuItem link="/settings" Icon={CogIcon} />
