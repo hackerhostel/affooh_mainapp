@@ -100,7 +100,7 @@ const EditUserRole = ({isOpen, onClose, roleId}) => {
         {isOpen && (
             <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-end z-[999]">
               <div
-                  className="fixed top-[370px] right-0 transform -translate-y-1/2 w-[797px] h-[740px] p-5 bg-white shadow-md z-[1000] rounded-l-lg overflow-y-auto"
+                  className="fixed top-0 right-0 w-[797px] h-screen p-5 bg-white shadow-md z-[1000] rounded-l-lg overflow-y-auto"
               >
                 <div className="flex justify-between items-center p-4 border-b border-gray-200">
                   <h4 className="text-md font-semibold text-gray-900">Edit User Role</h4>
