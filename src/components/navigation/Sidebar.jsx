@@ -140,9 +140,9 @@ function Sidebar() {
                         {[
                             { name: "Project Management", url: "https://pm.affooh.com/dashboard/", icon: <PresentationChartLineIcon /> },
                             { name: "Compliance Management", url: "https://cm.affooh.com/dashboard/", icon: <DocumentChartBarIcon /> },
-                            { name: "Human Resource Management", url: "https://hr.affooh.com/dashboard/", icon: <UserGroupIcon /> },
-                            { name: "Finance Management", url: "https://fm.affooh.com/dashboard/", icon: <BanknotesIcon /> },
-                            { name: "Sales Management", url: "https://sales.affooh.com/dashboard/", icon: <BriefcaseIcon /> },
+                            // { name: "Human Resource Management", url: "https://hr.affooh.com/dashboard/", icon: <UserGroupIcon /> },
+                            // { name: "Finance Management", url: "https://fm.affooh.com/dashboard/", icon: <BanknotesIcon /> },
+                            // { name: "Sales Management", url: "https://sales.affooh.com/dashboard/", icon: <BriefcaseIcon /> },
                         ].map((item, index) => (
                             <a
                                 key={index}
