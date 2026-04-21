@@ -12,6 +12,7 @@ import UserManagementLayout from "./user-management/index.jsx";
 import ChatLayout from "./chat/index.jsx";
 import {doGetProjectBreakdown, selectSelectedProject} from "../state/slice/projectSlice.js";
 import {isNotEmptyObj} from "../utils/commonUtils.js";
+import UserManagementProfilePage from "./user-management/UserManagementProfilePage.jsx";
 import {doGetMasterData, selectInitialDataError, selectInitialDataLoading} from "../state/slice/appSlice.js";
 
 const Dashboard = () => {
@@ -58,6 +59,10 @@ const Dashboard = () => {
 
             <Route path="/settings">
               <SettingLayout/>
+            </Route>
+
+            <Route path="/profile">
+               <UserManagementProfilePage onBack={() => {}} />
             </Route>
 
             <Route exact path="/">

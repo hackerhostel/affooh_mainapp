@@ -51,6 +51,13 @@ export const appSlice = createSlice({
   initialState,
   reducers: {
     clearAppState: () => initialState,
+    updateOrganizationUser: (state, action) => {
+      if (state.organizationUsers && Array.isArray(state.organizationUsers)) {
+        state.organizationUsers = state.organizationUsers.map((user) =>
+          user.id === action.payload.id ? action.payload : user
+        );
+      }
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(doGetMasterData.pending, (state, action) => {
@@ -78,7 +85,7 @@ export const appSlice = createSlice({
   }
 })
 
-export const {clearAppState} = appSlice.actions
+export const {clearAppState, updateOrganizationUser} = appSlice.actions
 
 export const selectAppConfig = (state) => state.app.appConfig;
 export const selectInitialDataLoading = (state) => state.app.initialDataLoading;

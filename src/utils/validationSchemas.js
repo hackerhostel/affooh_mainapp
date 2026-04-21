@@ -122,3 +122,31 @@ export const CreateTaskTypeSchema = yup.object({
     .required("Screen ID is required")
     .integer("Screen ID must be an integer"),
 });
+
+export const UserUpdateSchema = yup.object().shape({
+  firstName: yup
+    .string()
+    .required("First name is required")
+    .max(15, "First name must be at most 15 characters long")
+    .trim(),
+  lastName: yup
+    .string()
+    .required("Last name is required")
+    .max(15, "Last name must be at most 15 characters long")
+    .trim(),
+  contactNumber: yup
+    .string()
+    .max(20, "Contact number must be at most 20 characters long")
+    .trim(),
+  position: yup
+    .string()
+    .max(50, "Position must be at most 50 characters long")
+    .trim(),
+  userRole: yup
+    .string()
+    .required("User role is required"),
+  email: yup
+    .string()
+    .email("Invalid email format")
+    .required("Email is required"),
+});

@@ -13,7 +13,7 @@ import {toast} from "react-toastify";
 import axios from "axios";
 import ConfirmationDialog from "../../components/ConfirmationDialog.jsx";
 
-const User = () => {
+const User = ({ onUserClick }) => {
     const dispatch = useDispatch();
     const organizationUsers = useSelector(selectOrganizationUsers);
     const isLoading = useSelector(selectInitialDataLoading);
@@ -249,20 +249,20 @@ const User = () => {
             return <span className="text-gray-400 italic">No user</span>;
 
         return (
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 cursor-pointer group" onClick={() => onUserClick && onUserClick(user)}>
                 {user.avatar ? (
                     <img
                         src={user.avatar}
                         alt={`${user.firstName} ${user.lastName}`}
-                        className="w-10 h-10 rounded-full object-cover"
+                        className="w-10 h-10 rounded-full object-cover border-2 border-transparent group-hover:border-primary-pink transition-all"
                     />
                 ) : (
-                    <div className="w-10 h-10 rounded-full bg-primary-pink flex items-center justify-center text-white text-sm font-semibold">
+                    <div className="w-10 h-10 rounded-full bg-primary-pink flex items-center justify-center text-white text-sm font-semibold group-hover:bg-pink-600 transition-all">
                         {user.firstName?.[0]}
                         {user.lastName?.[0]}
                     </div>
                 )}
-                <span>
+                <span className="group-hover:text-primary-pink transition-colors underline-offset-4 group-hover:underline">
                     {user.firstName} {user.lastName}
                 </span>
             </div>

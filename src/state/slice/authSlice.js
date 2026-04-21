@@ -53,6 +53,7 @@ export const authSlice = createSlice({
 export const {clearAuthState} = authSlice.actions
 
 export const selectUser = (state) => state.auth.user;
+export const selectPermissions = (state) => state.auth.user?.permissions || {};
 export const selectInitialUserDataLoading = (state) => state.auth.initialDataLoading;
 export const selectInitialUserDataError = (state) => state.auth.initialDataError;
 
