@@ -385,12 +385,12 @@ const User = ({ onUserClick }) => {
                 <table className="table-auto w-full border-collapse">
                     <thead>
                     <tr className="text-left border-b border-gray-200 text-secondary-grey">
-                        <th className="py-3 px-2 text-center">#</th>
-                        <th className="py-3 px-2 text-center">User</th>
-                        <th className="py-3 px-2 text-center">Role</th>
-                        <th className="py-3 px-2 text-center">Email</th>
-                        <th className="py-3 px-2 text-center">Contact</th>
-                        <th className="py-3 px-2 text-center">Invite Status</th>
+                        <th className="py-3 px-2">#</th>
+                        <th className="py-3 px-2">User</th>
+                        <th className="py-3 px-2">Role</th>
+                        <th className="py-3 px-2">Email</th>
+                        <th className="py-3 px-2">Contact</th>
+                        <th className="py-3 px-2">Invite Status</th>
                         <th className="py-3 px-2">Actions</th>
                     </tr>
                     </thead>
@@ -399,6 +399,8 @@ const User = ({ onUserClick }) => {
                         {filteredUsers.map((user, index) => {
                             const isEditing = editingRowId === user.id;
                             const userRoleName = roles.find(r => r.id === user.userRole)?.value || 'N/A';
+                            const ownerRoleId = roles.find(r => r.value?.toUpperCase() === 'OWNER')?.id;
+                            const ownerCount = filteredUsers.filter(u => u.userRole === ownerRoleId).length;
 
                             return (
                                 <tr key={user.id} className="border-b border-gray-200">
@@ -434,10 +436,12 @@ const User = ({ onUserClick }) => {
                                             />
                                         ) : (
                                             <div className="flex items-center gap-3">
-                                                <TrashIcon
-                                                    className="w-5 h-5 text-text-color cursor-pointer"
-                                                    onClick={() => handleDeleteClick(user)}
-                                                />
+                                                {!(user.userRole === ownerRoleId && ownerCount <= 1) && (
+                                                    <TrashIcon
+                                                        className="w-5 h-5 text-text-color cursor-pointer"
+                                                        onClick={() => handleDeleteClick(user)}
+                                                    />
+                                                )}
                                                 <XMarkIcon
                                                     className="w-5 h-5 text-text-color cursor-pointer"
                                                     onClick={() => toggleMenu(null)}
