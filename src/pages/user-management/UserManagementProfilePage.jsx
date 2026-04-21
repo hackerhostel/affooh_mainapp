@@ -44,6 +44,8 @@ const UserManagementProfilePage = ({ onBack }) => {
   const selectedUser = clicked || loggedInUser;
   
   const userUpdatePermission = useSelector(selectPermissions).User?.update ?? false;
+  const isOwnProfile = loggedInUser?.id === (clicked?.id || loggedInUser?.id);
+  const canUpdate = isOwnProfile || userUpdatePermission;
 
   const [formErrors, setFormErrors] = useState({});
   const [isEditable, setIsEditable] = useState(false);
@@ -409,7 +411,7 @@ useEffect(() => {
     <div className="p-6 bg-dashboard-bgc min-h-screen">
       <div className="flex flex-col md:flex-row gap-6">
         <div className="w-full md:w-72 bg-white rounded-lg p-6 h-fit sticky top-16">
-          {userUpdatePermission && (
+          {canUpdate && (
               <div className="flex justify-end">
                 {isEditable ? (
                     <XMarkIcon onClick={() => toggleEditable(false)}
@@ -501,6 +503,9 @@ useEffect(() => {
                 name="contactNumber"
                 formValues={formValues}
                 placeholder="Contact Number"
+                onKeyPress={(e) => {
+                  if (!/\d/.test(e.key)) e.preventDefault();
+                }}
                 onChange={(e) =>{
                   const value = e.target.value;
                     setFormValues({
@@ -551,17 +556,17 @@ useEffect(() => {
                     setFormValues({...formValues, userRole: e.target.value})
                 }
                 className={`w-full p-2 border rounded-md ${
-                    isEditable
+                    isEditable && !isOwnProfile
                         ? "bg-white text-secondary-grey border-border-color"
                         : "bg-user-detail-box text-secondary-grey border-border-color cursor-not-allowed"
                 }`}
-                disabled={!isEditable}
+                disabled={!isEditable || isOwnProfile}
                 formErrors={formErrors}
                 showErrors={true}
                 showLabel={true}
               />
 
-              {userUpdatePermission && (
+              {canUpdate && (
                   <button
                       onClick={updateUser}
                       type="submit"

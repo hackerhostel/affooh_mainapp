@@ -136,6 +136,7 @@ export const UserUpdateSchema = yup.object().shape({
     .trim(),
   contactNumber: yup
     .string()
+    .matches(/^\d*$/, "Contact number must contain numbers only")
     .max(20, "Contact number must be at most 20 characters long")
     .trim(),
   position: yup
