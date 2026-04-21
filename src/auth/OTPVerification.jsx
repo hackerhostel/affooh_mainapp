@@ -8,6 +8,11 @@ import {toast} from "react-toastify";
 const OTPVerification = () => {
   const history = useHistory();
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    document.title = "Affooh | OTP Verification";
+  }, []);
+
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(60);
   const [isResendActive, setIsResendActive] = useState(false);

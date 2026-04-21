@@ -13,6 +13,10 @@ import AnimatedLoader from "../components/AnimatedLoader.jsx";
 const Login = () => {
   const dispatch = useDispatch();
   const [enabled, setEnabled] = useState(true);
+
+  React.useEffect(() => {
+    document.title = "Affooh | Login";
+  }, []);
   const history = useHistory();
   const location = useLocation();
   const [loginDetails, setLoginDetails] = useState({ username: '', password: '' });

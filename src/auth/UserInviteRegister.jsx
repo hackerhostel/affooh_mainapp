@@ -14,6 +14,11 @@ const RegisterForm = () => {
   const { addToast } = useToasts();
   const history = useHistory();
   const dispatch = useDispatch();
+
+  useEffect(() => {
+    document.title = "Affooh | Register";
+  }, []);
+
   const [registerDetails, setRegisterDetails] = useState({ username: '', organization: '', firstName: '', lastName: '', password: '', confirmPassword: '' });
   const [isValidationErrorsShown, setIsValidationErrorsShown] = useState(false);
   const [organization, setOrganization] = useState('');

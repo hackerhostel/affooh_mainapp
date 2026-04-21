@@ -24,6 +24,11 @@ const ResetPassword = () => {
   const verificationCode = location.state?.code;
   const formRef = useRef(null);
 
+  useEffect(() => {
+    document.title = "Affooh | Reset Password";
+  }, []);
+
+
   const [resetDetails, setResetDetails] = useState({
     newPassword: "",
     confirmPassword: "",

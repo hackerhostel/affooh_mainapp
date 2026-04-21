@@ -9,6 +9,10 @@ import Spinner from "../components/Spinner.jsx";
 
 const ForgotPassword = () => {
   const history = useHistory();
+
+  React.useEffect(() => {
+    document.title = "Affooh | Forgot Password";
+  }, []);
   const [forgotPasswordDetails, setForgotPasswordDetails] = useState({
     email: "",
   });

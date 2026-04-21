@@ -11,6 +11,10 @@ import { signInWithRedirect } from "aws-amplify/auth";
 
 function Register() {
   const dispatch = useDispatch();
+
+  React.useEffect(() => {
+    document.title = "Affooh | Register";
+  }, []);
   const history = useHistory();
   const [registerDetails, setRegisterDetails] = useState({
     username: "",
