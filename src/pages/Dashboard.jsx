@@ -68,7 +68,7 @@ const Dashboard = () => {
             <Route exact path="/">
               <Redirect
                 to={{
-                  pathname: '/dashboard',
+                  pathname: '/user-management',
                 }}
               />
             </Route>

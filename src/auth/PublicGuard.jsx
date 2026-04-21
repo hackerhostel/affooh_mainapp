@@ -41,7 +41,7 @@ const PublicGuard = ({ children, ...rest }) => {
         ) : (
           <Redirect
             to={{
-              pathname: '/dashboard',
+              pathname: '/user-management',
               state: { from: location },
             }}
           />

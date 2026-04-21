@@ -55,7 +55,7 @@ const Login = () => {
       dispatch(doGetWhoAmI())
       toast.success('logged in Successfully')
       formRef.current.reset();
-      history.push('/dashboard');
+      history.push('/user-management');
     } catch (e) {
       toast.error(e.message)
     } finally {

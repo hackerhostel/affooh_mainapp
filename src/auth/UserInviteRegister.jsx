@@ -72,7 +72,7 @@ const RegisterForm = () => {
           toast.success(`Successfully signed in and set new password'`);
           dispatch(doGetWhoAmI());
           dispatch(registerInvitedUser(registerDetails))
-          history.push('/dashboard');
+          history.push('/user-management');
         }
       } catch (error) {
         toast.error('Error setting new password:');
