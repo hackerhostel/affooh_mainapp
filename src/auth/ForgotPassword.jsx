@@ -5,6 +5,7 @@ import FormInput from "../components/FormInput.jsx";
 import useValidation from "../utils/use-validation.jsx";
 import { ForgotPasswordSchema } from "../state/domains/authModels.js";
 import { toast } from "react-toastify";
+import AnimatedLoader from "../components/AnimatedLoader.jsx";
 import Spinner from "../components/Spinner.jsx";
 
 const ForgotPassword = () => {
@@ -92,7 +93,7 @@ const ForgotPassword = () => {
             className="btn-login flex items-center justify-center m-auto"
             disabled={loading}
           >
-            {loading ? <Spinner className="w-5 h-5 text-white" /> : "Send Code"}
+            {loading ? <AnimatedLoader size="small" showMessage={false} className="p-0" /> : "Send Code"}
           </button>
         </form>
         <div className="text-center mt-8 text-text-color">

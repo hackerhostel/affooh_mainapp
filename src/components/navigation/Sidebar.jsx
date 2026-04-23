@@ -20,6 +20,7 @@ import { AwsConfigAuth } from '../../auth/auth';
 import React, { Fragment, useEffect, useRef, useState } from 'react';
 import Notification from "./NotificationPopup.jsx";
 import AffoohDots from "../../assets/dots.png";
+import AnimatedLoader from "../AnimatedLoader.jsx";
 import Spinner from "../Spinner.jsx";
 
 function Sidebar() {
@@ -271,7 +272,7 @@ function Sidebar() {
                     </Menu>
                 ) : (
                     <div className="w-12 h-12 flex items-center justify-center">
-                        <Spinner />
+                        <AnimatedLoader size="small" showMessage={false} />
                     </div>
                 )}
             </div>
