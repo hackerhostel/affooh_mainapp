@@ -11,9 +11,13 @@ import {updateOrganizationUser} from "../../state/slice/appSlice.js";
 import useUserTasks from "../../hooks/custom-hooks/user/useUserTasks.jsx";
 import SearchBar from "../../components/SearchBar.jsx";
 import {priorityCellRender, statusCellRender,} from "../../utils/taskutils.jsx";
-import {useHistory} from "react-router-dom";
+import {useHistory, useParams} from "react-router-dom";
 import { UserUpdateSchema } from "../../utils/validationSchemas.js";
 import {selectPermissions, selectUser} from "../../state/slice/authSlice.js";
+import UserSkillInventoryTab from "./tabs/UserSkillInventoryTab.jsx";
+import UserCompetencyMatrixTab from "./tabs/UserCompetencyMatrixTab.jsx";
+import UserAccessMatrixTab from "./tabs/UserAccessMatrixTab.jsx";
+import {selectSelectedProject} from "../../state/slice/projectSlice.js";
 
 // Transform task to match table field names with correct property access
 const transformTask = (task) => {
@@ -46,6 +50,8 @@ const UserManagementProfilePage = ({ onBack }) => {
   const userUpdatePermission = useSelector(selectPermissions).User?.update ?? false;
   const isOwnProfile = loggedInUser?.id === (clicked?.id || loggedInUser?.id);
   const canUpdate = isOwnProfile || userUpdatePermission;
+  const currentProject = useSelector(selectSelectedProject);
+  const projectId = currentProject?.id;
 
   const [formErrors, setFormErrors] = useState({});
   const [isEditable, setIsEditable] = useState(false);
@@ -72,6 +78,9 @@ const UserManagementProfilePage = ({ onBack }) => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const tasksPerPage = 5;
+
+  // Active tab state
+  const [activeTab, setActiveTab] = useState("tasks");
 
   // Fetch user tasks using useUserTasks hook
   const {
@@ -580,237 +589,244 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Tasks Section */}
+        {/* Right Panel — Tabbed */}
         <div className="flex-1 bg-white rounded-lg p-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <div className="flex flex-col md:flex-row gap-5 items-start md:items-center w-full md:w-auto">
-              <h6 className="font-semibold whitespace-nowrap">{`Tasks (${filteredTaskList.length})`}</h6>
-              <div className="w-full md:w-auto">
-                <SearchBar
-                  placeholder="Search"
-                  onSearch={handleSearch}
-                  value={searchTerm}
-                />
-              </div>
-            </div>
-            <div className="flex gap-4 w-full md:w-auto justify-between md:justify-end">
-              {Object.entries(taskCounts).map(([type, count]) => (
-                <div key={type} className="text-center">
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold
-                    ${
-                      type === "all"
-                        ? "bg-pink-100 text-pink-500"
-                        : type === "tasks"
-                          ? "bg-green-100 text-green-500"
-                          : type === "bugs"
+          {/* Tab Navigation */}
+          <div className="flex gap-0 border-b border-gray-200 mb-6">
+            {[
+              { key: "tasks", label: `Tasks (${filteredTaskList.length})` },
+              { key: "skillInventory", label: "Skill Inventory" },
+              { key: "competencyMatrix", label: "Competency Matrix" },
+              { key: "userAccess", label: "User Access Matrix" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                  activeTab === tab.key
+                    ? "border-primary-pink text-primary-pink"
+                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tasks Tab */}
+          {activeTab === "tasks" && (
+            <>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                <div className="flex flex-col md:flex-row gap-5 items-start md:items-center w-full md:w-auto">
+                  <div className="w-full md:w-auto">
+                    <SearchBar
+                      placeholder="Search tasks"
+                      onSearch={handleSearch}
+                      value={searchTerm}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-4 w-full md:w-auto justify-between md:justify-end">
+                  {Object.entries(taskCounts).map(([type, count]) => (
+                    <div key={type} className="text-center">
+                      <div
+                        className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-semibold
+                        ${
+                          type === "all"
+                            ? "bg-pink-100 text-pink-500"
+                            : type === "tasks"
+                            ? "bg-green-100 text-green-500"
+                            : type === "bugs"
                             ? "bg-red-100 text-red-500"
                             : "bg-blue-100 text-blue-500"
-                    }`}
-                  >
-                    {count}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1 capitalize">
-                    {type}
-                  </p>
+                        }`}
+                      >
+                        {count}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1 capitalize">
+                        {type}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Filter controls */}
-          <div className="flex flex-wrap gap-4 items-end mb-4">
-            <div className="min-w-[150px]">
-              <FormSelect
-                name="project"
-                formValues={{
-                  project: projectFilter || "",
-                }}
-                options={projectOptions}
-                onChange={({ target: { value } }) => setProjectFilter(value)}
-                showLabel={false}
-                className="h-10 py-2 px-3"
-                showShadow={false}
-              />
-            </div>
-
-            <div className="min-w-[150px]">
-              <FormSelect
-                name="status"
-                formValues={{
-                  status: statusFilter || "",
-                }}
-                options={statusOptions}
-                onChange={({ target: { value } }) => setStatusFilter(value)}
-                showLabel={false}
-                className="h-10 py-2 px-3"
-                showShadow={false}
-              />
-            </div>
-
-            <div className="min-w-[150px]">
-              <FormSelect
-                name="priority"
-                formValues={{
-                  priority: priorityFilter || "",
-                }}
-                options={priorityOptions}
-                onChange={({ target: { value } }) => setPriorityFilter(value)}
-                showLabel={false}
-                className="h-10 py-2 px-3"
-                showShadow={false}
-              />
-            </div>
-
-            <div className="min-w-[120px]">
-              <input
-                type="date"
-                value={
-                  startDateFilter
-                    ? startDateFilter.toISOString().split("T")[0]
-                    : ""
-                }
-                onChange={(e) => {
-                  const date = e.target.value ? new Date(e.target.value) : null;
-                  setStartDateFilter(date);
-                }}
-                className="h-10 w-full border border-gray-300 rounded-md px-3 text-sm"
-                placeholder="Start Date"
-              />
-            </div>
-
-            <div className="min-w-[120px]">
-              <input
-                type="date"
-                value={
-                  endDateFilter ? endDateFilter.toISOString().split("T")[0] : ""
-                }
-                onChange={(e) => {
-                  const date = e.target.value ? new Date(e.target.value) : null;
-                  setEndDateFilter(date);
-                }}
-                className="h-10 w-full border border-gray-300 rounded-md px-3 text-sm"
-                placeholder="End Date"
-              />
-            </div>
-
-            <button
-              onClick={resetFilters}
-              className="h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
-            >
-              Clear Filters
-            </button>
-          </div>
-
-          {loading && <p className="text-center py-4">Loading tasks...</p>}
-          {error && <p className="text-center py-4 text-red-500">Error loading tasks</p>}
-          {!selectedUser && (
-            <p className="text-center py-4">No user selected.</p>
-          )}
-          {!loading && !error && selectedUser && (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="text-left text-sm text-gray-500 border-b">
-                  <tr>
-                    <th className="pb-3 px-2">Task ID</th>
-                    <th className="pb-3 px-2">Project</th>
-                    <th className="pb-3 px-2">Task Name</th>
-                    <th className="pb-3 px-2 text-center">Priority</th>
-                    <th className="pb-3 px-2 text-center">Status</th>
-                    <th className="pb-3 px-2">Start Date</th>
-                    <th className="pb-3 px-2">End Date</th>
-                    <th className="pb-3 px-2">Type</th>
-                  </tr>
-                  </thead>
-                  <tbody className="text-sm">
-                    {currentTasks.length > 0 ? (
-                      currentTasks.map((task) => (
-                          <tr key={task.key} className="border-b hover:bg-gray-50 transition-colors">
-                            <td className="py-4 px-2 font-medium">{task.code}</td>
-                            <td className="py-4 px-2">{task.project}</td>
-                            <td className="py-4 px-2">
-                              <div className="line-clamp-2 max-w-xs">{task.title}</div>
-                            </td>
-                            <td className="py-4 px-2">
-                              <div className="flex justify-center">
-                                {priorityCellRender({value: task.priority})}
-                              </div>
-                            </td>
-                            <td className="py-4 px-2">
-                              <div className="flex justify-center">
-                                {statusCellRender({value: task.status})}
-                              </div>
-                            </td>
-                            <td className="py-4 px-2">{task.startDate}</td>
-                            <td className="py-4 px-2">{task.endDate}</td>
-                            <td className="py-4 px-2">{task.type}</td>
-                          </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="8" className="py-10 text-center text-gray-500">
-                          No tasks found for this user
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
               </div>
 
-              {/* Pagination */}
-              {filteredTaskList.length > tasksPerPage && (
-                <div className="flex justify-center items-center mt-6 gap-2">
-                  <button
-                    onClick={() => paginate(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className={`w-8 h-8 flex items-center justify-center rounded-md ${
-                      currentPage === 1
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    &lt;
-                  </button>
-
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const pageNum =
-                      currentPage > 3 && totalPages > 5
-                        ? currentPage - 2 + i
-                        : i + 1;
-
-                    if (pageNum <= totalPages) {
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => paginate(pageNum)}
-                          className={`w-8 h-8 flex items-center justify-center rounded-md ${
-                            currentPage === pageNum
-                              ? "bg-primary-pink text-white"
-                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                          }`}
-                        >
-                          {pageNum.toString().padStart(2, "0")}
-                        </button>
-                      );
-                    }
-                    return null;
-                  })}
-
-                  <button
-                    onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages}
-                    className={`w-8 h-8 flex items-center justify-center rounded-md ${
-                      currentPage === totalPages
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    &gt;
-                  </button>
+              {/* Filter controls */}
+              <div className="flex flex-wrap gap-4 items-end mb-4">
+                <div className="min-w-[150px]">
+                  <FormSelect
+                    name="project"
+                    formValues={{ project: projectFilter || "" }}
+                    options={projectOptions}
+                    onChange={({ target: { value } }) => setProjectFilter(value)}
+                    showLabel={false}
+                    className="h-10 py-2 px-3"
+                    showShadow={false}
+                  />
                 </div>
+                <div className="min-w-[150px]">
+                  <FormSelect
+                    name="status"
+                    formValues={{ status: statusFilter || "" }}
+                    options={statusOptions}
+                    onChange={({ target: { value } }) => setStatusFilter(value)}
+                    showLabel={false}
+                    className="h-10 py-2 px-3"
+                    showShadow={false}
+                  />
+                </div>
+                <div className="min-w-[150px]">
+                  <FormSelect
+                    name="priority"
+                    formValues={{ priority: priorityFilter || "" }}
+                    options={priorityOptions}
+                    onChange={({ target: { value } }) => setPriorityFilter(value)}
+                    showLabel={false}
+                    className="h-10 py-2 px-3"
+                    showShadow={false}
+                  />
+                </div>
+                <div className="min-w-[120px]">
+                  <input
+                    type="date"
+                    value={startDateFilter ? startDateFilter.toISOString().split("T")[0] : ""}
+                    onChange={(e) => setStartDateFilter(e.target.value ? new Date(e.target.value) : null)}
+                    className="h-10 w-full border border-gray-300 rounded-md px-3 text-sm"
+                  />
+                </div>
+                <div className="min-w-[120px]">
+                  <input
+                    type="date"
+                    value={endDateFilter ? endDateFilter.toISOString().split("T")[0] : ""}
+                    onChange={(e) => setEndDateFilter(e.target.value ? new Date(e.target.value) : null)}
+                    className="h-10 w-full border border-gray-300 rounded-md px-3 text-sm"
+                  />
+                </div>
+                <button
+                  onClick={resetFilters}
+                  className="h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+                >
+                  Clear Filters
+                </button>
+              </div>
+
+              {loading && <p className="text-center py-4">Loading tasks...</p>}
+              {error && <p className="text-center py-4 text-red-500">Error loading tasks</p>}
+              {!selectedUser && <p className="text-center py-4">No user selected.</p>}
+              {!loading && !error && selectedUser && (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="text-left text-sm text-gray-500 border-b">
+                        <tr>
+                          <th className="pb-3 px-2">Task ID</th>
+                          <th className="pb-3 px-2">Project</th>
+                          <th className="pb-3 px-2">Task Name</th>
+                          <th className="pb-3 px-2 text-center">Priority</th>
+                          <th className="pb-3 px-2 text-center">Status</th>
+                          <th className="pb-3 px-2">Start Date</th>
+                          <th className="pb-3 px-2">End Date</th>
+                          <th className="pb-3 px-2">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        {currentTasks.length > 0 ? (
+                          currentTasks.map((task) => (
+                            <tr key={task.key} className="border-b hover:bg-gray-50 transition-colors">
+                              <td className="py-4 px-2 font-medium">{task.code}</td>
+                              <td className="py-4 px-2">{task.project}</td>
+                              <td className="py-4 px-2">
+                                <div className="line-clamp-2 max-w-xs">{task.title}</div>
+                              </td>
+                              <td className="py-4 px-2">
+                                <div className="flex justify-center">
+                                  {priorityCellRender({ value: task.priority })}
+                                </div>
+                              </td>
+                              <td className="py-4 px-2">
+                                <div className="flex justify-center">
+                                  {statusCellRender({ value: task.status })}
+                                </div>
+                              </td>
+                              <td className="py-4 px-2">{task.startDate}</td>
+                              <td className="py-4 px-2">{task.endDate}</td>
+                              <td className="py-4 px-2">{task.type}</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="8" className="py-10 text-center text-gray-500">
+                              No tasks found for this user
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination */}
+                  {filteredTaskList.length > tasksPerPage && (
+                    <div className="flex justify-center items-center mt-6 gap-2">
+                      <button
+                        onClick={() => paginate(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                          currentPage === 1
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        &lt;
+                      </button>
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum =
+                          currentPage > 3 && totalPages > 5
+                            ? currentPage - 2 + i
+                            : i + 1;
+                        if (pageNum <= totalPages) {
+                          return (
+                            <button
+                              key={pageNum}
+                              onClick={() => paginate(pageNum)}
+                              className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                                currentPage === pageNum
+                                  ? "bg-primary-pink text-white"
+                                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                              }`}
+                            >
+                              {pageNum.toString().padStart(2, "0")}
+                            </button>
+                          );
+                        }
+                        return null;
+                      })}
+                      <button
+                        onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                          currentPage === totalPages
+                            ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        &gt;
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </>
+          )}
+
+          {/* Other Tabs */}
+          {activeTab === "skillInventory" && (
+            <UserSkillInventoryTab userId={selectedUser?.id} projectId={projectId} />
+          )}
+          {activeTab === "competencyMatrix" && (
+            <UserCompetencyMatrixTab userId={selectedUser?.id} projectId={projectId} />
+          )}
+          {activeTab === "userAccess" && (
+            <UserAccessMatrixTab userId={selectedUser?.id} />
           )}
         </div>
       </div>
