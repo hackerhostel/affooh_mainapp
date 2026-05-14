@@ -3,13 +3,14 @@ import Sidebar from "../components/navigation/Sidebar.jsx";
 import Header from "../components/navigation/Header.jsx";
 import {useDispatch, useSelector} from "react-redux";
 import React, {useEffect} from "react";
-import {doGetWhoAmI, selectInitialUserDataError, selectInitialUserDataLoading} from "../state/slice/authSlice.js";
+import {doGetWhoAmI, selectInitialUserDataError, selectInitialUserDataLoading, selectUser} from "../state/slice/authSlice.js";
 import LoadingPage from "./LoadingPage.jsx";
 import ServiceDownPage from "./ServiceDownPage.jsx";
 import DashboardLayout from "./dashboard-page/index.jsx";
 import SettingLayout from "./setting-page/index.jsx";
 import UserManagementLayout from "./user-management/index.jsx";
 import ChatLayout from "./chat/index.jsx";
+import AgentsLayout from "./agents/index.jsx";
 import {doGetProjectBreakdown, selectSelectedProject} from "../state/slice/projectSlice.js";
 import {isNotEmptyObj} from "../utils/commonUtils.js";
 import UserManagementProfilePage from "./user-management/UserManagementProfilePage.jsx";
@@ -21,7 +22,9 @@ const Dashboard = () => {
   const isInitialUserDataError = useSelector(selectInitialUserDataError);
   const isInitialUserDataLoading = useSelector(selectInitialUserDataLoading);
   const selectedProject = useSelector(selectSelectedProject);
+  const user = useSelector(selectUser);
   const dispatch = useDispatch();
+  const isOwner = user?.userRole?.name?.toLowerCase() === 'owner';
 
   useEffect(() => {
     dispatch(doGetWhoAmI())
@@ -59,6 +62,10 @@ const Dashboard = () => {
 
             <Route path="/settings">
               <SettingLayout/>
+            </Route>
+
+            <Route path="/agents">
+              {isOwner ? <AgentsLayout /> : <Redirect to="/dashboard" />}
             </Route>
 
             <Route path="/profile">

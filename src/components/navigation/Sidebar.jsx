@@ -6,6 +6,7 @@ import {
     BriefcaseIcon,
     ChatBubbleOvalLeftIcon,
     CogIcon,
+    SparklesIcon,
     DocumentChartBarIcon,
     PresentationChartLineIcon,
     Squares2X2Icon,
@@ -28,6 +29,7 @@ function Sidebar() {
     const dispatch = useDispatch();
     const history = useHistory();
     const userDetails = useSelector(selectUser);
+    const isOwner = userDetails?.userRole?.name?.toLowerCase() === 'owner';
     const [loading, setLoading] = useState(false);
     const [isOpenPopUp, setIsOpenPopUp] = useState(false);
     const [isAppMenuOpen, setIsAppMenuOpen] = useState(false);
@@ -167,6 +169,7 @@ function Sidebar() {
                 <MenuItem link="/user-management" Icon={UserIcon} />
                 {/*<MenuItem link="/chat" Icon={ChatBubbleOvalLeftIcon}/>*/}
                 <MenuItem link="/settings" Icon={CogIcon} />
+                {isOwner && <MenuItem link="/agents" Icon={SparklesIcon} />}
             </div>
 
 
