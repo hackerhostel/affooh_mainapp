@@ -201,12 +201,6 @@ const RolePermissionsEditor = ({ template, initialPermissions = {}, onChange }) 
               if (!modulePermissions) return null;
 
               const categories = Object.entries(modulePermissions);
-              
-              // Split categories into two columns - right column should have 6 items
-              const rightColumnSize = Math.min(6, categories.length);
-              const leftColumnSize = categories.length - rightColumnSize;
-              const leftColumn = categories.slice(0, leftColumnSize);
-              const rightColumn = categories.slice(leftColumnSize);
 
               return (
                 <div
@@ -217,102 +211,50 @@ const RolePermissionsEditor = ({ template, initialPermissions = {}, onChange }) 
                     {formatLabel(moduleName)}
                   </h6>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                    {/* Left Column */}
-                    <div className="space-y-6">
-                      {leftColumn.map(([category, actions]) => {
-                        if (typeof actions !== 'object' || actions === null) return null;
+                    {categories.map(([category, actions]) => {
+                      if (typeof actions !== 'object' || actions === null) return null;
 
-                        return (
-                          <div key={category} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <h7 className="text-sm font-bold text-gray-900 block mb-4 pb-2 border-b border-gray-300">
-                              {formatLabel(category)}
-                            </h7>
-                            <div className="space-y-3">
-                              {Object.entries(actions).map(([action, defaultValue]) => {
-                                const isEnabled =
-                                  permissions[moduleName]?.[category]?.[action] ?? defaultValue;
-                                return (
-                                  <div
-                                    key={action}
-                                    className="flex items-center justify-between py-2 px-2 rounded-md hover:bg-white transition-colors"
+                      return (
+                        <div key={category} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                          <h6 className="text-sm font-bold text-gray-900 block mb-4 pb-2 border-b border-gray-300">
+                            {formatLabel(category)}
+                          </h6>
+                          <div className="space-y-3">
+                            {Object.entries(actions).map(([action, defaultValue]) => {
+                              const isEnabled =
+                                permissions[moduleName]?.[category]?.[action] ?? defaultValue;
+                              return (
+                                <div
+                                  key={action}
+                                  className="flex items-center justify-between py-2 px-2 rounded-md hover:bg-white transition-colors"
+                                >
+                                  <span className="text-sm font-medium text-gray-700">
+                                    {formatLabel(action)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      handlePermissionToggle(moduleName, category, action)
+                                    }
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                                      isEnabled
+                                        ? 'bg-green-500 focus:ring-green-500'
+                                        : 'bg-gray-300 focus:ring-gray-400'
+                                    }`}
                                   >
-                                    <span className="text-sm font-medium text-gray-700">
-                                      {formatLabel(action)}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handlePermissionToggle(moduleName, category, action)
-                                      }
-                                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                        isEnabled 
-                                          ? 'bg-green-500 focus:ring-green-500' 
-                                          : 'bg-gray-300 focus:ring-gray-400'
+                                    <span
+                                      className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+                                        isEnabled ? 'translate-x-6' : 'translate-x-1'
                                       }`}
-                                    >
-                                      <span
-                                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                                          isEnabled ? 'translate-x-6' : 'translate-x-1'
-                                        }`}
-                                      />
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
+                                    />
+                                  </button>
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      })}
-                    </div>
-
-                    {/* Right Column */}
-                    <div className="space-y-6">
-                      {rightColumn.map(([category, actions]) => {
-                        if (typeof actions !== 'object' || actions === null) return null;
-
-                        return (
-                          <div key={category} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                            <h7 className="text-sm font-bold text-gray-900 block mb-4 pb-2 border-b border-gray-300">
-                              {formatLabel(category)}
-                            </h7>
-                            <div className="space-y-3">
-                              {Object.entries(actions).map(([action, defaultValue]) => {
-                                const isEnabled =
-                                  permissions[moduleName]?.[category]?.[action] ?? defaultValue;
-
-                                return (
-                                  <div
-                                    key={action}
-                                    className="flex items-center justify-between py-2 px-2 rounded-md hover:bg-white transition-colors"
-                                  >
-                                    <span className="text-sm font-medium text-gray-700 mr-2">
-                                      {formatLabel(action)}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        handlePermissionToggle(moduleName, category, action)
-                                      }
-                                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                        isEnabled 
-                                          ? 'bg-green-500 focus:ring-green-500' 
-                                          : 'bg-gray-300 focus:ring-gray-400'
-                                      }`}
-                                    >
-                                      <span
-                                        className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
-                                          isEnabled ? 'translate-x-6' : 'translate-x-1'
-                                        }`}
-                                      />
-                                    </button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               );
