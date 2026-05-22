@@ -547,8 +547,8 @@ const ToolsTab = () => {
 
   const handleGSCConnect = async () => {
     try {
-      const { authUrl } = await getGSCAuthURL();
-      window.location.href = authUrl;
+      const { authURL } = await getGSCAuthURL();
+      window.location.href = authURL;
     } catch (e) {
       console.error('GSC connect error', e);
     }
