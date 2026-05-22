@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   MagnifyingGlassIcon,
   AdjustmentsHorizontalIcon,
@@ -22,22 +22,87 @@ import {
   ChevronRightIcon,
   LinkIcon,
   ShieldExclamationIcon,
-  SparklesIcon
+  SparklesIcon,
+  CheckCircleIcon,
+  ExclamationCircleIcon,
 } from '@heroicons/react/24/outline';
 import { PlayIcon } from '@heroicons/react/24/solid';
 import { useHistory } from 'react-router-dom';
 import NewAgentModal from './NewAgentModal';
+import ConfigureAgentModal from './ConfigureAgentModal';
+import {
+  getAgentStatus,
+  getModelConfig,
+  getSeoSchedule,
+  getSeoSiteConfig,
+  runSeoAnalysis,
+  getSeoExecutions,
+  getLatestSeoReport,
+} from './agentApi';
 
 const AgentsLayout = () => {
   const [selectedAgent, setSelectedAgent] = useState('seo');
-  const [activeTab, setActiveTab] = useState('chat'); // Set to chat by default as per screenshot
+  const [activeTab, setActiveTab] = useState('chat');
   const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false);
+  const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
   const [selectedOutputTab, setSelectedOutputTab] = useState('report');
+
+  // SEO real data state
+  const [seoStatus, setSeoStatus] = useState(null);
+  const [seoModelConfig, setSeoModelConfig] = useState(null);
+  const [seoSchedule, setSeoSchedule] = useState(null);
+  const [seoSiteConfig, setSeoSiteConfig] = useState(null);
+  const [seoReport, setSeoReport] = useState(null);
+  const [seoExecutions, setSeoExecutions] = useState([]);
+  const [seoLoading, setSeoLoading] = useState(true);
+  const [runningAnalysis, setRunningAnalysis] = useState(false);
+  const [runMessage, setRunMessage] = useState(null);
+
+  const loadSeoData = useCallback(async () => {
+    setSeoLoading(true);
+    try {
+      const [statusRes, modelRes, scheduleRes, siteRes, reportRes, execRes] = await Promise.allSettled([
+        getAgentStatus(),
+        getModelConfig('SEO'),
+        getSeoSchedule(),
+        getSeoSiteConfig(),
+        getLatestSeoReport(),
+        getSeoExecutions(),
+      ]);
+      if (statusRes.status === 'fulfilled') setSeoStatus(statusRes.value);
+      if (modelRes.status === 'fulfilled') setSeoModelConfig(modelRes.value);
+      if (scheduleRes.status === 'fulfilled') setSeoSchedule(scheduleRes.value);
+      if (siteRes.status === 'fulfilled') setSeoSiteConfig(siteRes.value);
+      if (reportRes.status === 'fulfilled') setSeoReport(reportRes.value?.report || null);
+      if (execRes.status === 'fulfilled') setSeoExecutions(execRes.value?.executions || []);
+    } catch (_) {}
+    setSeoLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadSeoData();
+  }, [loadSeoData]);
+
+  const handleRunAnalysis = async () => {
+    setRunningAnalysis(true);
+    setRunMessage(null);
+    try {
+      const res = await runSeoAnalysis({ siteUrl: seoSiteConfig?.siteUrl });
+      setRunMessage({ type: 'success', text: `Analysis started — execution ID: ${res.executionId || 'queued'}` });
+      setTimeout(() => loadSeoData(), 3000);
+    } catch (e) {
+      setRunMessage({ type: 'error', text: e?.response?.data?.error || 'Failed to start analysis' });
+    }
+    setRunningAnalysis(false);
+  };
+
+  const seoEnabled = seoStatus?.agents?.find(a => a.agentType === 'SEO')?.isEnabled ?? true;
+  const seoModelName = seoModelConfig?.modelID || 'Not configured';
 
   const agents = [
     { id: 'ba', name: 'Business Analyst', model: 'GPT-4o', init: 'BA', color: 'bg-blue-600 text-white', sources: 3, tools: 2 },
     { id: 'pm', name: 'Product Manager', model: 'Claude Sonnet 3.5', init: 'PM', color: 'bg-purple-500 text-white', sources: 5, tools: 4 },
-    { id: 'seo', name: 'SEO Specialist', model: 'GPT-4o', init: 'SEO', color: 'bg-gradient-to-br from-orange-400 to-pink-500 text-white', active: true, running: true, sources: 8, tools: 6 },
+    { id: 'seo', name: 'SEO Specialist', model: seoModelName, init: 'SEO', color: 'bg-gradient-to-br from-orange-400 to-pink-500 text-white', active: true, running: seoEnabled, sources: 8, tools: 6, agentType: 'SEO' },
     { id: 'des', name: 'Designer', model: 'Claude Sonnet 3.5', init: 'DE', color: 'bg-pink-400 text-white', sources: 2, tools: 3 },
     { id: 'da', name: 'Data Analyst', model: 'GPT-4o', init: 'DA', color: 'bg-teal-500 text-white', sources: 4, tools: 5 },
     { id: 'qa', name: 'QA Tester', model: 'Claude Haiku 3.5', init: 'QA', color: 'bg-red-500 text-white', sources: 3, tools: 2 },
@@ -58,24 +123,6 @@ const AgentsLayout = () => {
     { id: 'map', label: 'Map', icon: MapIcon },
   ];
 
-  const tasks = [
-    { id: 1, title: "Draft pillar page: 'Async standups for distributed teams'", priority: 'High', owner: 'CW', done: false },
-    { id: 2, title: "Brief 8 supporting articles for the async cluster", priority: 'High', owner: 'SEO', done: false },
-    { id: 3, title: "Audit existing /standup-meeting page for cannibalisation", priority: 'Med', owner: 'SEO', done: true },
-    { id: 4, title: "Build internal-link plan from /pm-templates → new pillar", priority: 'Med', owner: 'SEO', done: false },
-    { id: 5, title: "Source 2 customer quotes from CS team", priority: 'Med', owner: 'MK', done: false },
-    { id: 6, title: "Request 3 original screenshots from Design", priority: 'Low', owner: 'DS', done: false },
-    { id: 7, title: "Sprint planning cluster — keyword research", priority: 'Med', owner: 'SEO', done: false },
-    { id: 8, title: "RICE cluster — competitor outline scrape", priority: 'Low', owner: 'SEO', done: false },
-  ];
-
-  const files = [
-    { name: 'content-gap-may13.pdf', type: 'PDF', size: '284 KB', category: 'Report' },
-    { name: 'keyword-gaps.csv', type: 'CSV', size: '42 KB', category: 'Data' },
-    { name: 'async-standups-brief.md', type: 'MD', size: '8 KB', category: 'Brief' },
-    { name: 'competitor-serps.json', type: 'JSON', size: '118 KB', category: 'Raw' },
-    { name: 'schema-article.json', type: 'JSON', size: '1 KB', category: 'Snippet' },
-  ];
 
   return (
     <div className="bg-white flex text-sm text-gray-800 font-sans h-full w-full overflow-hidden">
@@ -166,7 +213,7 @@ const AgentsLayout = () => {
             </div>
             <div className="flex items-center gap-4 text-sm font-medium text-gray-600">
               <button className="flex items-center gap-1.5 hover:text-gray-900 bg-white border border-gray-200 shadow-sm px-3 py-1.5 rounded-lg text-[13px]"><ArrowPathIcon className="w-4 h-4" /> New thread</button>
-              <button className="flex items-center gap-1.5 hover:text-gray-900 bg-white border border-gray-200 shadow-sm px-3 py-1.5 rounded-lg text-[13px]"><AdjustmentsHorizontalIcon className="w-4 h-4" /> Configure</button>
+              <button onClick={() => setIsConfigureModalOpen(true)} className="flex items-center gap-1.5 hover:text-gray-900 bg-white border border-gray-200 shadow-sm px-3 py-1.5 rounded-lg text-[13px]"><AdjustmentsHorizontalIcon className="w-4 h-4" /> Configure</button>
             </div>
           </div>
 
@@ -176,7 +223,7 @@ const AgentsLayout = () => {
                 className={`flex items-center gap-2 pb-2 border-b-2 font-medium text-[13px] cursor-pointer transition-colors ${activeTab === 'chat' ? 'border-[#d92d78] text-[#d92d78]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                 onClick={() => setActiveTab('chat')}
               >
-                <ChatBubbleLeftEllipsisIcon className="w-4 h-4" /> Chat <span className={`text-[10px] px-1.5 rounded-md font-bold ${activeTab === 'chat' ? 'bg-pink-50 text-[#d92d78]' : 'bg-gray-100 text-gray-500'}`}>{selectedAgent === 'ba' ? '2' : '5'}</span>
+                <ChatBubbleLeftEllipsisIcon className="w-4 h-4" /> Chat
               </div>
               <div
                 className={`flex items-center gap-2 pb-2 border-b-2 font-medium text-[13px] cursor-pointer transition-colors ${activeTab === 'configure' ? 'border-[#d92d78] text-[#d92d78]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
@@ -186,137 +233,35 @@ const AgentsLayout = () => {
               </div>
             </div>
             <div className="text-[12px] text-gray-400 pb-2">
-              Thread <span className="font-medium text-gray-500">#{selectedAgent === 'ba' ? 'billing-portal-reqs' : 'seo-content-gap-may13'}</span>
+              New thread
             </div>
           </div>
         </div>
 
         {activeTab === 'chat' ? (
           <>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
-              {selectedAgent === 'ba' ? (
-                <>
-                  {/* BA Message 1 */}
-                  <div className="flex justify-end gap-3">
-                    <div className="flex flex-col items-end max-w-[75%]">
-                      <div className="bg-[#d92d78] text-white p-3.5 px-5 rounded-2xl rounded-tr-sm text-[14px] shadow-sm font-medium">
-                        Capture requirements for the new billing portal.
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div className="w-8 h-8 bg-[#c17a65] text-white rounded-full flex items-center justify-center font-bold text-[11px] shrink-0">SP</div>
-                      <div className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">You • 8:12</div>
-                    </div>
-                  </div>
-
-                  {/* BA Response 1 */}
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center mt-1">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold bg-blue-600 text-white shrink-0 border border-gray-100 shadow-sm">BA</div>
-                    </div>
-                    <div className="max-w-[75%]">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[12px] text-gray-400">Business Analyst • 8:13</span>
-                      </div>
-                      <div className="bg-[#f5f5f5] text-gray-800 p-4 rounded-2xl rounded-tl-sm text-[14px] leading-relaxed">
-                        <p>I have 4 clarifying questions before I draft. (1) Are we supporting metered + seat-based on day one? (2) Do tax rules need to handle EU VAT? (3) Is dunning in scope? (4) Who's the executive sponsor?</p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  {/* SEO Message 1 */}
-                  <div className="flex justify-end gap-3">
-                    <div className="flex flex-col items-end max-w-[75%]">
-                      <div className="bg-[#d92d78] text-white p-3.5 px-4 rounded-2xl rounded-tr-sm text-[14px] shadow-sm">
-                        Run a content gap analysis for affooh.com vs our top 3 competitors in the project-management space.
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div className="w-8 h-8 bg-[#c17a65] text-white rounded-full flex items-center justify-center font-bold text-[11px] shrink-0">SP</div>
-                      <div className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">You • 9:41</div>
-                    </div>
-                  </div>
-
-                  {/* SEO Response 1 */}
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center mt-1">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold bg-gradient-to-br from-orange-400 to-pink-500 text-white shrink-0 border border-gray-100 shadow-sm">SEO</div>
-                    </div>
-                    <div className="max-w-[75%]">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[12px] text-gray-400">SEO Specialist • 9:41</span>
-                      </div>
-                      <div className="bg-[#f5f5f5] text-gray-800 p-4 rounded-2xl rounded-tl-sm text-[14px]">
-                        <p>On it. I'll pull SERP data for the seed terms in your 'pm-keywords' RAG source, cluster intent, and flag gaps where competitors rank top-10 and you don't.</p>
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="flex gap-2">
-                            <span className="text-[11px] bg-white text-gray-600 px-2 py-1 rounded-md border border-gray-200 flex items-center gap-1 shadow-sm"><BoltIcon className="w-3 h-3 text-gray-400" /> serp_api</span>
-                            <span className="text-[11px] bg-white text-gray-600 px-2 py-1 rounded-md border border-gray-200 flex items-center gap-1 shadow-sm"><BoltIcon className="w-3 h-3 text-gray-400" /> ahrefs_export</span>
-                          </div>
-                          <span className="text-[11px] text-gray-400">2.4s</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SEO Response 2 */}
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center mt-1">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold bg-gradient-to-br from-orange-400 to-pink-500 text-white shrink-0 border border-gray-100 shadow-sm">SEO</div>
-                    </div>
-                    <div className="max-w-[75%]">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[12px] text-gray-400">SEO Specialist • 9:43</span>
-                      </div>
-                      <div className="bg-[#f5f5f5] text-gray-800 p-4 rounded-2xl rounded-tl-sm text-[14px]">
-                        <p>Found 47 high-value gap keywords across 6 clusters. Top cluster is "async standups" — 8,400 mo. searches, all three competitors rank, affooh doesn't have a page. Full report and a draft brief are in the output panel -></p>
-                        <button className="mt-4 bg-pink-50 text-[#d92d78] px-3 py-1.5 rounded-lg text-[13px] font-medium border border-pink-100 hover:bg-pink-100 flex items-center gap-1 shadow-sm">
-                          <DocumentTextIcon className="w-4 h-4" /> View in output panel &gt;
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SEO Message 2 */}
-                  <div className="flex justify-end gap-3">
-                    <div className="flex flex-col items-end max-w-[75%]">
-                      <div className="bg-[#d92d78] text-white p-3.5 px-4 rounded-2xl rounded-tr-sm text-[14px] shadow-sm">
-                        Nice. Draft an outline for the async-standups pillar page and prioritise the rest as tasks.
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div className="w-8 h-8 bg-[#c17a65] text-white rounded-full flex items-center justify-center font-bold text-[11px] shrink-0">SP</div>
-                      <div className="text-[10px] text-gray-400 mt-1 whitespace-nowrap">You • 9:44</div>
-                    </div>
-                  </div>
-
-                  {/* SEO Response 3 */}
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center mt-1">
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold bg-gradient-to-br from-orange-400 to-pink-500 text-white shrink-0 border border-gray-100 shadow-sm">SEO</div>
-                    </div>
-                    <div className="max-w-[75%]">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[12px] text-gray-400">SEO Specialist • 9:44</span>
-                      </div>
-                      <div className="bg-[#f5f5f5] text-gray-800 p-4 rounded-2xl rounded-tl-sm text-[14px]">
-                        <p>Outline drafted (8 H2s, 2,400 words target) and 12 follow-up tasks pushed to the task list. Want me to hand the outline to the Content Writer agent?</p>
-                        <div className="mt-4 flex gap-2">
-                          <button className="bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-[13px] font-medium hover:bg-gray-50 shadow-sm">
-                            Hand off to CW
-                          </button>
-                          <button className="bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-[13px] font-medium hover:bg-gray-50 shadow-sm">
-                            Edit outline
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-              <div className="h-4"></div>
+            <div className="flex-1 overflow-y-auto p-6 bg-white flex flex-col items-center justify-center">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-[13px] font-bold ${currentAgent.color} mb-4 shadow-sm`}>
+                {currentAgent.init}
+              </div>
+              <div className="text-[15px] font-semibold text-gray-800 mb-1">{currentAgent.name}</div>
+              <div className="text-[13px] text-gray-400 mb-6 text-center max-w-xs">
+                Start a conversation. Ask this agent to run an analysis, draft content, or review your site.
+              </div>
+              <div className="flex flex-wrap gap-2 justify-center max-w-sm">
+                {currentAgent.id === 'seo' ? (
+                  <>
+                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Run a site audit</button>
+                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Find content gaps</button>
+                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Check Core Web Vitals</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Get started</button>
+                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">What can you do?</button>
+                  </>
+                )}
+              </div>
             </div>
 
             <div className="px-6 py-4 bg-white border-t border-gray-100">
@@ -338,216 +283,130 @@ const AgentsLayout = () => {
           </>
         ) : (
           <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-white">
-            {/* Configure Tab Content */}
+            {/* Configure Tab — SEO Analysis */}
             <div className="bg-[#fff0f6] rounded-xl p-5 border border-pink-100 flex items-center justify-between shadow-sm mb-6">
               <div>
-                <div className="text-[14px] font-bold text-gray-900 mb-0.5">Automated tasks</div>
-                <p className="text-[13px] text-gray-600">Recurring jobs SEO Specialist runs on its own. 6 of 8 enabled · model & persona live in <span className="text-pink-600 underline cursor-pointer hover:text-pink-700">advanced settings</span>.</p>
+                <div className="text-[14px] font-bold text-gray-900 mb-0.5">SEO Analysis</div>
+                <p className="text-[13px] text-gray-600">
+                  {seoSiteConfig?.siteUrl ? (
+                    <>Analysing <span className="font-medium text-gray-800">{seoSiteConfig.siteUrl}</span> · schedule &amp; model in <span className="text-pink-600 underline cursor-pointer hover:text-pink-700" onClick={() => setIsConfigureModalOpen(true)}>advanced settings</span>.</>
+                  ) : (
+                    <>Configure site URL and model in <span className="text-pink-600 underline cursor-pointer hover:text-pink-700" onClick={() => setIsConfigureModalOpen(true)}>advanced settings</span>.</>
+                  )}
+                </p>
               </div>
-              <button className="bg-white border border-gray-200 text-gray-700 px-4 py-2 rounded-lg text-[13px] font-medium shadow-sm hover:bg-gray-50 flex items-center gap-2">
-                <PlusIcon className="w-4 h-4" /> Add task
+              <button
+                onClick={handleRunAnalysis}
+                disabled={runningAnalysis}
+                className="bg-gray-900 text-white px-4 py-2 rounded-lg text-[13px] font-medium shadow-sm hover:bg-black flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {runningAnalysis ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <PlayIcon className="w-4 h-4" />}
+                {runningAnalysis ? 'Starting…' : 'Run now'}
               </button>
             </div>
 
-            {/* Task 1: Site crawl (Expanded) */}
+            {runMessage && (
+              <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-medium border ${runMessage.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                {runMessage.type === 'success' ? <CheckCircleIcon className="w-4 h-4 shrink-0" /> : <ExclamationCircleIcon className="w-4 h-4 shrink-0" />}
+                {runMessage.text}
+              </div>
+            )}
+
+            {/* Schedule card */}
             <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 border-b border-gray-100">
+              <div className="p-4 flex items-center justify-between border-b border-gray-100">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-pink-500 border border-pink-100">
                     <ArrowPathIcon className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold text-[14px] text-gray-900">Site crawl</div>
-                    <div className="text-[13px] text-gray-500 mt-0.5">Discover URLs, status codes, redirects, orphan pages.</div>
+                    <div className="font-bold text-[14px] text-gray-900">Scheduled analysis</div>
+                    <div className="text-[13px] text-gray-500 mt-0.5">Full SEO crawl, PageSpeed, GSC data, and AI report.</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <div className="text-[13px] font-semibold text-gray-500 flex items-center justify-end gap-1"><ArrowPathIcon className="w-3.5 h-3.5" /> Daily · 03:00 UTC</div>
-                    <div className="text-[11px] text-gray-400 mt-0.5">Last run · 2h ago</div>
+                    {seoSchedule ? (
+                      <>
+                        <div className="text-[13px] font-semibold text-gray-600 flex items-center gap-1">
+                          <ArrowPathIcon className="w-3.5 h-3.5" />
+                          {seoSchedule.frequency || 'Manual'}
+                        </div>
+                        {seoSchedule.nextRunAt && (
+                          <div className="text-[11px] text-gray-400 mt-0.5">
+                            Next · {new Date(seoSchedule.nextRunAt).toLocaleString()}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-[13px] text-gray-400">Not scheduled</div>
+                    )}
                   </div>
-                  <div className="w-9 h-5 bg-[#d92d78] rounded-full relative cursor-pointer shadow-inner">
-                    <div className="w-4 h-4 bg-white rounded-full absolute right-0.5 top-0.5 shadow-sm"></div>
+                  <div className={`w-9 h-5 rounded-full relative shadow-inner ${seoEnabled ? 'bg-[#d92d78]' : 'bg-gray-200 border border-gray-300'}`}>
+                    <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 shadow-sm transition-all ${seoEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
                   </div>
-                  <ChevronDownIcon className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
 
-              <div className="px-5 pb-5 pt-4 bg-white">
-                <div className="flex gap-6 mb-5">
+              <div className="px-5 py-4 bg-white">
+                <div className="flex gap-6">
                   <div className="flex-1">
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Start URL</label>
-                    <input type="text" defaultValue="https://affooh.com" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-800 font-medium focus:outline-none focus:ring-1 focus:ring-pink-500 shadow-sm" />
+                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Site URL</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={seoSiteConfig?.siteUrl || ''}
+                      placeholder="Not configured"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-800 font-medium bg-gray-50 focus:outline-none"
+                    />
                   </div>
                   <div className="flex-1">
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Max Depth</label>
-                    <input type="text" defaultValue="5" className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-800 font-medium focus:outline-none focus:ring-1 focus:ring-pink-500 shadow-sm" />
+                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">AI Model</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={seoModelName}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-800 font-medium bg-gray-50 focus:outline-none"
+                    />
                   </div>
                 </div>
-
-                <div className="mb-6">
-                  <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Schedule</label>
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-1 flex text-[13px] font-medium text-gray-500">
-                    <div className="px-4 py-1.5 rounded-md cursor-pointer hover:text-gray-700">Realtime</div>
-                    <div className="px-4 py-1.5 rounded-md cursor-pointer hover:text-gray-700">Hourly</div>
-                    <div className="px-4 py-1.5 rounded-md bg-white border border-gray-200 text-gray-900 shadow-sm cursor-pointer">Daily · 03:00 UTC</div>
-                    <div className="px-4 py-1.5 rounded-md cursor-pointer hover:text-gray-700">Weekly · Mon 06:00</div>
-                    <div className="px-4 py-1.5 rounded-md cursor-pointer hover:text-gray-700">Monthly · 1st</div>
-                    <div className="px-4 py-1.5 rounded-md cursor-pointer hover:text-gray-700">Off</div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100">
+                <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
                   <div className="text-[12px] text-gray-400 flex items-center gap-1.5 font-medium">
-                    <BoltIcon className="w-3.5 h-3.5 text-gray-400" /> 142 total runs · Output → output panel
+                    <BoltIcon className="w-3.5 h-3.5" /> {seoExecutions.length} total runs · Output → report panel
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-[13px] text-gray-500 font-medium cursor-pointer hover:text-gray-800">... Logs</div>
-                    <button className="bg-gray-900 text-white px-3 py-1.5 rounded-lg text-[13px] font-medium flex items-center gap-1.5 hover:bg-black shadow-sm">
-                      <PlayIcon className="w-3.5 h-3.5" /> Run now
-                    </button>
+                  <button
+                    onClick={() => setIsConfigureModalOpen(true)}
+                    className="text-[13px] text-pink-600 font-medium hover:underline"
+                  >
+                    Edit settings →
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Past executions */}
+            {seoExecutions.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                <div className="px-4 py-3 border-b border-gray-100 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
+                  Recent Runs
+                </div>
+                {seoExecutions.slice(0, 5).map((exec, i) => (
+                  <div key={exec.executionId || i} className="px-4 py-3 flex items-center justify-between border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${exec.status === 'SUCCEEDED' ? 'bg-green-500' : exec.status === 'RUNNING' ? 'bg-blue-500 animate-pulse' : exec.status === 'FAILED' ? 'bg-red-500' : 'bg-gray-400'}`}></div>
+                      <div>
+                        <div className="text-[13px] font-medium text-gray-800">{exec.status}</div>
+                        <div className="text-[11px] text-gray-400">{exec.startedAt ? new Date(exec.startedAt).toLocaleString() : '—'}</div>
+                      </div>
+                    </div>
+                    {exec.healthScore != null && (
+                      <div className="text-[13px] font-bold text-gray-700">Score: {exec.healthScore}</div>
+                    )}
                   </div>
-                </div>
+                ))}
               </div>
-            </div>
+            )}
 
-            {/* Task 2: Meta audit (Collapsed) */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-pink-500 border border-pink-100">
-                  <DocumentTextIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-bold text-[14px] text-gray-900">Meta audit</div>
-                  <div className="text-[13px] text-gray-500 mt-0.5">Title, description, canonical, OG and Twitter cards.</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <div className="text-[13px] font-semibold text-gray-500 flex items-center justify-end gap-1"><ArrowPathIcon className="w-3.5 h-3.5" /> Daily · 04:00 UTC</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">Last run · 2h ago</div>
-                </div>
-                <div className="w-9 h-5 bg-[#d92d78] rounded-full relative cursor-pointer shadow-inner">
-                  <div className="w-4 h-4 bg-white rounded-full absolute right-0.5 top-0.5 shadow-sm"></div>
-                </div>
-                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-
-            {/* Task 3: Site speed */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-pink-500 border border-pink-100">
-                  <BoltIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-bold text-[14px] text-gray-900">Site speed (Core Web Vitals)</div>
-                  <div className="text-[13px] text-gray-500 mt-0.5">LCP, INP, CLS for mobile + desktop. Lighthouse run.</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <div className="text-[13px] font-semibold text-gray-500 flex items-center justify-end gap-1"><ArrowPathIcon className="w-3.5 h-3.5" /> Weekly · Mon 06:00</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">Last run · 3d ago</div>
-                </div>
-                <div className="w-9 h-5 bg-[#d92d78] rounded-full relative cursor-pointer shadow-inner">
-                  <div className="w-4 h-4 bg-white rounded-full absolute right-0.5 top-0.5 shadow-sm"></div>
-                </div>
-                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-
-            {/* Task 4: Keyword rank tracking */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-pink-500 border border-pink-100">
-                  <ChartBarIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-bold text-[14px] text-gray-900">Keyword rank tracking</div>
-                  <div className="text-[13px] text-gray-500 mt-0.5">Track positions for a keyword set across locations.</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <div className="text-[13px] font-semibold text-gray-500 flex items-center justify-end gap-1"><ArrowPathIcon className="w-3.5 h-3.5" /> Daily · 08:00 UTC</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">Last run · 6h ago</div>
-                </div>
-                <div className="w-9 h-5 bg-[#d92d78] rounded-full relative cursor-pointer shadow-inner">
-                  <div className="w-4 h-4 bg-white rounded-full absolute right-0.5 top-0.5 shadow-sm"></div>
-                </div>
-                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-
-            {/* Task 5: Backlink monitoring */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-pink-500 border border-pink-100">
-                  <LinkIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-bold text-[14px] text-gray-900">Backlink monitoring</div>
-                  <div className="text-[13px] text-gray-500 mt-0.5">New/lost referring domains, anchor-text shifts.</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <div className="text-[13px] font-semibold text-gray-500 flex items-center justify-end gap-1"><ArrowPathIcon className="w-3.5 h-3.5" /> Weekly · Fri 09:00</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">Last run · 4d ago</div>
-                </div>
-                <div className="w-9 h-5 bg-[#d92d78] rounded-full relative cursor-pointer shadow-inner">
-                  <div className="w-4 h-4 bg-white rounded-full absolute right-0.5 top-0.5 shadow-sm"></div>
-                </div>
-                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-
-            {/* Task 6: Content gap analysis (OFF) */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-200">
-                  <SparklesIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-bold text-[14px] text-gray-900">Content gap analysis</div>
-                  <div className="text-[13px] text-gray-500 mt-0.5">Find keywords competitors rank for and you don't.</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right text-gray-300">
-                  <div className="text-[13px] font-semibold flex items-center justify-end gap-1"><ArrowPathIcon className="w-3.5 h-3.5" /> Monthly · 1st</div>
-                  <div className="text-[11px] mt-0.5">Last run · never</div>
-                </div>
-                <div className="w-9 h-5 bg-white border border-gray-300 rounded-full relative cursor-pointer">
-                  <div className="w-4 h-4 bg-gray-300 rounded-full absolute left-0.5 top-0.5 shadow-sm"></div>
-                </div>
-                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
-
-            {/* Task 7: Broken-link scan */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden p-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 mb-4">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-pink-500 border border-pink-100">
-                  <ShieldExclamationIcon className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="font-bold text-[14px] text-gray-900">Broken-link scan</div>
-                  <div className="text-[13px] text-gray-500 mt-0.5">4xx/5xx internal links and external dead-ends.</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <div className="text-[13px] font-semibold text-gray-500 flex items-center justify-end gap-1"><ArrowPathIcon className="w-3.5 h-3.5" /> Weekly · Wed 02:00</div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">Last run · 1d ago</div>
-                </div>
-                <div className="w-9 h-5 bg-[#d92d78] rounded-full relative cursor-pointer shadow-inner">
-                  <div className="w-4 h-4 bg-white rounded-full absolute right-0.5 top-0.5 shadow-sm"></div>
-                </div>
-                <ChevronRightIcon className="w-4 h-4 text-gray-400" />
-              </div>
-            </div>
             <div className="h-4"></div>
           </div>
         )}
@@ -586,42 +445,84 @@ const AgentsLayout = () => {
 
         <div className="flex-1 overflow-y-auto p-6 bg-[#fcfcfc] scrollbar-hide">
           {selectedOutputTab === 'report' && (
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 min-h-full max-w-full overflow-hidden">
-              <div className="flex items-center gap-3 text-xs text-gray-500 mb-6 font-medium">
-                <span className="bg-gray-100 border border-gray-200 px-2 py-0.5 rounded text-gray-700">v3 • draft</span>
-                <span>Generated 9:43 • 1,420 words</span>
+            seoLoading ? (
+              <div className="flex items-center justify-center h-48 text-gray-400 text-[13px]">
+                <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading report…
               </div>
+            ) : seoReport ? (
+              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 min-h-full max-w-full overflow-hidden">
+                <div className="flex items-center gap-3 text-xs text-gray-500 mb-6 font-medium">
+                  {seoReport.healthScore != null && (
+                    <span className={`px-2.5 py-0.5 rounded-full font-bold text-white text-[11px] ${seoReport.healthScore >= 70 ? 'bg-green-500' : seoReport.healthScore >= 40 ? 'bg-orange-400' : 'bg-red-500'}`}>
+                      Score {seoReport.healthScore}
+                    </span>
+                  )}
+                  {seoReport.generatedAt && (
+                    <span>Generated {new Date(seoReport.generatedAt).toLocaleString()}</span>
+                  )}
+                  {seoReport.siteUrl && (
+                    <span className="text-gray-400">{seoReport.siteUrl}</span>
+                  )}
+                </div>
 
-              <div className="text-2xl font-bold text-gray-900 mb-4 tracking-tight leading-snug">Content gap analysis — Project management space</div>
-              <p className="text-sm text-gray-600 mb-8 leading-relaxed">
-                affooh.com vs monday.com, asana.com, clickup.com. SERP data pulled May 13, 2026 from US desktop, top 20.
-              </p>
+                <div className="text-2xl font-bold text-gray-900 mb-4 tracking-tight leading-snug">
+                  SEO Health Report
+                </div>
 
-              <div className="mb-6">
-                <div className="text-xs font-bold text-gray-500 tracking-wider mb-2 uppercase">Summary</div>
-                <p className="text-sm text-gray-800 leading-relaxed">
-                  We found <strong className="font-semibold text-gray-900">47 high-value keyword gaps across 6 thematic clusters</strong> where all three competitors rank in the top 10 and affooh does not appear in the top 50. Combined monthly search volume is <strong className="font-semibold text-gray-900">158k</strong>.
-                </p>
+                {seoReport.executiveSummary && (
+                  <div className="mb-6">
+                    <div className="text-xs font-bold text-gray-500 tracking-wider mb-2 uppercase">Summary</div>
+                    <p className="text-sm text-gray-800 leading-relaxed">{seoReport.executiveSummary}</p>
+                  </div>
+                )}
+
+                {seoReport.prioritizedIssues?.length > 0 && (
+                  <div className="mb-6">
+                    <div className="text-xs font-bold text-gray-500 tracking-wider mb-3 uppercase">Prioritized Issues</div>
+                    <div className="space-y-3">
+                      {seoReport.prioritizedIssues.map((issue, i) => (
+                        <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
+                            issue.priority === 'high' || issue.priority === 'critical'
+                              ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                              : issue.priority === 'medium'
+                              ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                              : 'bg-gray-100 text-gray-600 border border-gray-200'
+                          }`}>{issue.priority || 'low'}</span>
+                          <div>
+                            <div className="text-[13px] font-semibold text-gray-900">{issue.title || issue.issue}</div>
+                            {issue.description && <div className="text-[12px] text-gray-500 mt-0.5">{issue.description}</div>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {seoReport.recommendations?.length > 0 && (
+                  <div>
+                    <div className="text-xs font-bold text-gray-500 tracking-wider mb-3 uppercase">Recommendations</div>
+                    <ol className="list-decimal pl-4 space-y-2 text-sm text-gray-800 marker:text-gray-500">
+                      {seoReport.recommendations.map((rec, i) => (
+                        <li key={i}>{typeof rec === 'string' ? rec : rec.text || rec.recommendation}</li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
               </div>
-
-              <div className="mb-6">
-                <div className="text-xs font-bold text-gray-500 tracking-wider mb-3 uppercase">Top Clusters</div>
-                <ol className="list-decimal pl-4 space-y-2.5 text-sm text-gray-800 marker:text-gray-500">
-                  <li><strong className="font-semibold text-gray-900">Async standups</strong> — 8,400 mo. • 12 keywords • all 3 competitors rank</li>
-                  <li><strong className="font-semibold text-gray-900">Sprint planning templates</strong> — 14,200 mo. • 9 keywords</li>
-                  <li><strong className="font-semibold text-gray-900">RICE prioritisation</strong> — 6,100 mo. • 7 keywords</li>
-                  <li><strong className="font-semibold text-gray-900">OKR examples</strong> — 22,400 mo. • 11 keywords</li>
-                  <li><strong className="font-semibold text-gray-900">Roadmap visualisation</strong> — 4,800 mo. • 4 keywords</li>
-                </ol>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <DocumentTextIcon className="w-12 h-12 text-gray-200 mb-4" />
+                <div className="text-[14px] font-semibold text-gray-500 mb-1">No report yet</div>
+                <div className="text-[13px] text-gray-400 mb-4">Run an analysis to generate your first SEO report.</div>
+                <button
+                  onClick={() => setActiveTab('configure')}
+                  className="bg-gray-900 text-white px-4 py-2 rounded-lg text-[13px] font-medium hover:bg-black flex items-center gap-2"
+                >
+                  <PlayIcon className="w-3.5 h-3.5" /> Go to Configure
+                </button>
               </div>
-
-              <div>
-                <div className="text-xs font-bold text-gray-500 tracking-wider mb-3 uppercase">Recommended Next Steps</div>
-                <p className="text-sm text-gray-800 leading-relaxed">
-                  Start with the <em className="bg-gray-100 px-1 py-0.5 rounded text-sm not-italic border border-gray-200">async standups</em> cluster — lowest difficulty (KD 28) and highest topical authority overlap with existing affooh content. Draft brief is queued for the Content Writer agent.
-                </p>
-              </div>
-            </div>
+            )
           )}
 
           {selectedOutputTab === 'tasks' && (
@@ -751,27 +652,42 @@ const AgentsLayout = () => {
 
           {selectedOutputTab === 'files' && (
             <div className="space-y-3 min-h-full">
-              {files.map((file, i) => (
-                <div key={i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between group hover:border-pink-300 transition-all cursor-pointer">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[10px] font-bold border ${
-                      file.type === 'PDF' ? 'bg-rose-50 text-rose-600 border-rose-100' :
-                      file.type === 'CSV' ? 'bg-green-50 text-green-600 border-green-100' :
-                      file.type === 'MD' ? 'bg-pink-50 text-pink-600 border-pink-100' :
-                      'bg-orange-50 text-orange-600 border-orange-100'
-                    }`}>
-                      {file.type}
-                    </div>
-                    <div>
-                      <div className="text-[14px] font-bold text-gray-900 group-hover:text-[#d92d78] transition-colors">{file.name}</div>
-                      <div className="text-[11px] text-gray-500 mt-0.5 font-medium">{file.category} · {file.size}</div>
-                    </div>
-                  </div>
-                  <button className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-all">
-                    <ArrowDownTrayIcon className="w-5 h-5" />
-                  </button>
+              {seoLoading ? (
+                <div className="flex items-center justify-center h-32 text-gray-400 text-[13px]">
+                  <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading…
                 </div>
-              ))}
+              ) : seoExecutions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-center">
+                  <FolderIcon className="w-10 h-10 text-gray-200 mb-3" />
+                  <div className="text-[13px] text-gray-400">No runs yet. Run an analysis to see execution history.</div>
+                </div>
+              ) : (
+                seoExecutions.map((exec, i) => (
+                  <div key={exec.executionId || i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between group hover:border-pink-300 transition-all cursor-pointer">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[10px] font-bold border ${
+                        exec.status === 'SUCCEEDED' ? 'bg-green-50 text-green-700 border-green-100' :
+                        exec.status === 'FAILED' ? 'bg-red-50 text-red-600 border-red-100' :
+                        exec.status === 'RUNNING' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                        'bg-gray-50 text-gray-500 border-gray-200'
+                      }`}>
+                        {exec.status === 'SUCCEEDED' ? 'DONE' : exec.status === 'FAILED' ? 'FAIL' : exec.status === 'RUNNING' ? 'RUN' : 'PEND'}
+                      </div>
+                      <div>
+                        <div className="text-[14px] font-bold text-gray-900 group-hover:text-[#d92d78] transition-colors">
+                          SEO Analysis
+                          {exec.healthScore != null && <span className="ml-2 text-[12px] font-normal text-gray-500">· Score {exec.healthScore}</span>}
+                        </div>
+                        <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
+                          {exec.startedAt ? new Date(exec.startedAt).toLocaleString() : '—'}
+                          {exec.siteUrl ? ` · ${exec.siteUrl}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${exec.status === 'SUCCEEDED' ? 'bg-green-500' : exec.status === 'RUNNING' ? 'bg-blue-500 animate-pulse' : exec.status === 'FAILED' ? 'bg-red-500' : 'bg-gray-400'}`}></div>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
@@ -825,6 +741,12 @@ const AgentsLayout = () => {
       <NewAgentModal
         isOpen={isNewAgentModalOpen}
         onClose={() => setIsNewAgentModalOpen(false)}
+      />
+
+      <ConfigureAgentModal
+        isOpen={isConfigureModalOpen}
+        onClose={() => setIsConfigureModalOpen(false)}
+        agent={currentAgent}
       />
     </div>
   );
