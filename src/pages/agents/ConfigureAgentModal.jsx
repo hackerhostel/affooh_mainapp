@@ -530,11 +530,7 @@ const ToolsTab = () => {
     setError(null);
     try {
       const data = await getCredentials();
-      const map = {};
-      for (const c of data.credentials || []) {
-        map[c.provider] = c;
-      }
-      setCreds(map);
+      setCreds(data.credentials || {});
     } catch (e) {
       const status = e?.response?.status;
       // 4xx = no credentials configured yet — show empty state, not an error

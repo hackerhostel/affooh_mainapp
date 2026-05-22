@@ -96,7 +96,7 @@ const AgentsLayout = () => {
     setRunningAnalysis(false);
   };
 
-  const seoEnabled = seoStatus?.agents?.find(a => a.agentType === 'SEO')?.isEnabled ?? true;
+  const seoEnabled = seoStatus?.agents?.SEO?.isEnabled ?? true;
   const seoModelName = seoModelConfig?.modelID || 'Not configured';
 
   const agents = [
@@ -526,29 +526,10 @@ const AgentsLayout = () => {
           )}
 
           {selectedOutputTab === 'tasks' && (
-            <div className="space-y-3 min-h-full">
-              <div className="flex items-center justify-between mb-4">
-                <div className="text-[13px] text-gray-500 font-medium">7 open · 1 done</div>
-                <button className="text-[13px] font-bold text-gray-800 flex items-center gap-1 hover:text-pink-600 transition-colors">
-                  <PlusIcon className="w-4 h-4" /> Add task
-                </button>
-              </div>
-              {tasks.map(task => (
-                <div key={task.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-start gap-4 group hover:border-gray-300 transition-all cursor-pointer">
-                  <div className={`mt-0.5 w-5 h-5 rounded border transition-colors flex items-center justify-center ${task.done ? 'bg-pink-100 border-pink-300 text-pink-600' : 'border-gray-300 group-hover:border-pink-300'}`}>
-                    {task.done && <ClipboardDocumentCheckIcon className="w-3.5 h-3.5" />}
-                  </div>
-                  <div className="flex-1">
-                    <div className={`text-[14px] font-medium leading-tight ${task.done ? 'text-gray-400 line-through' : 'text-gray-800'}`}>{task.title}</div>
-                    <div className="flex items-center gap-3 mt-2">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${task.priority === 'High' ? 'bg-rose-50 text-rose-600 border border-rose-100' : task.priority === 'Med' ? 'bg-orange-50 text-orange-600 border border-orange-100' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>
-                        {task.priority}
-                      </span>
-                      <span className="text-[11px] text-gray-400 font-bold">→ {task.owner}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <ClipboardDocumentCheckIcon className="w-12 h-12 text-gray-200 mb-4" />
+              <div className="text-[14px] font-semibold text-gray-500 mb-1">No tasks yet</div>
+              <div className="text-[13px] text-gray-400">Tasks extracted from the SEO report will appear here.</div>
             </div>
           )}
 
