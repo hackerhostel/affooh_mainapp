@@ -148,6 +148,22 @@ export async function getSeoReport(reportId) {
   return data;
 }
 
+export async function getSeoReportIssues(reportId, params = {}) {
+  const { data } = await axios.get(`${BASE}/agents/seo/reports/${reportId}/issues`, {
+    headers: headers(),
+    params,
+  });
+  return data;
+}
+
+export async function getSeoReportTasks(reportId, params = {}) {
+  const { data } = await axios.get(`${BASE}/agents/seo/reports/${reportId}/tasks`, {
+    headers: headers(),
+    params,
+  });
+  return data;
+}
+
 // ─── GSC OAuth ───────────────────────────────────────────────────────────────
 
 export async function getGSCAuthURL() {

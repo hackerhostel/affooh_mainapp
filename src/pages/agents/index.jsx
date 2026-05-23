@@ -1,4 +1,21 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  doLoadSeoData,
+  doRunAnalysis,
+  doSaveSiteConfig,
+  doSaveSchedule,
+  seoExecutionUpdated,
+  selectSeoStatus,
+  selectSeoModelConfig,
+  selectSeoSiteConfig,
+  selectSeoSchedule,
+  selectLatestReport,
+  selectReportDetail,
+  selectExecutions,
+  selectAgentLoading,
+  selectAgentError,
+} from '../../state/slice/agentSlice';
 import {
   MagnifyingGlassIcon,
   AdjustmentsHorizontalIcon,
@@ -30,14 +47,6 @@ import { useHistory } from 'react-router-dom';
 import NewAgentModal from './NewAgentModal';
 import ConfigureAgentModal from './ConfigureAgentModal';
 import {
-  getAgentStatus,
-  getModelConfig,
-  getSeoSchedule,
-  getSeoSiteConfig,
-  runSeoAnalysis,
-  getSeoExecutions,
-  getLatestSeoReport,
-  getSeoReport,
   getSeoTasks,
   saveSeoTask,
   runSeoTask,
@@ -144,6 +153,284 @@ const SCHEDULE_LABEL_TO_TYPE = {
 const SCHEDULE_TYPE_TO_LABEL = Object.fromEntries(
   Object.entries(SCHEDULE_LABEL_TO_TYPE).map(([k, v]) => [v, k])
 );
+
+// ─── Site Info + Schedule Section ─────────────────────────────────────────────
+
+const CRAWL_SPEED_LABELS = ['Polite', 'Normal', 'Aggressive'];
+const CRAWL_SPEED_VALUES = ['polite', 'normal', 'aggressive'];
+
+const SITE_SCHEDULE_OPTIONS = [
+  { label: 'Off', value: 'OFF' },
+  { label: 'Daily', value: 'DAILY' },
+  { label: 'Weekly', value: 'WEEKLY' },
+  { label: 'On deploy', value: 'ON_DEPLOY' },
+  { label: 'Manual only', value: 'MANUAL' },
+];
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedule }) => {
+  const [siteForm, setSiteForm] = useState({
+    siteURL: '',
+    maxPagesPerCrawl: 5000,
+    crawlDepth: 5,
+    crawlSpeed: 'normal',
+    excludeURLPatterns: '',
+    includeSubdomains: false,
+    respectRobotsTxt: true,
+  });
+  const [schedForm, setSchedForm] = useState({
+    scheduleType: 'OFF',
+    scheduledTime: '03:00',
+    scheduledDayOfWeek: 1,
+    timezone: 'UTC',
+  });
+  const [siteSaved, setSiteSaved] = useState(false);
+  const [schedSaved, setSchedSaved] = useState(false);
+  const [siteSaving, setSiteSaving] = useState(false);
+  const [schedSaving, setSchedSaving] = useState(false);
+
+  useEffect(() => {
+    if (siteConfig) {
+      setSiteForm({
+        siteURL: siteConfig.siteURL || siteConfig.siteUrl || '',
+        maxPagesPerCrawl: siteConfig.maxPagesPerCrawl ?? 5000,
+        crawlDepth: siteConfig.crawlDepth ?? 5,
+        crawlSpeed: siteConfig.crawlSpeed || 'normal',
+        excludeURLPatterns: Array.isArray(siteConfig.excludeURLPatterns)
+          ? siteConfig.excludeURLPatterns.join('\n')
+          : siteConfig.excludeURLPatterns || '',
+        includeSubdomains: !!siteConfig.includeSubdomains,
+        respectRobotsTxt: siteConfig.respectRobotsTxt !== false,
+      });
+    }
+  }, [siteConfig]);
+
+  useEffect(() => {
+    if (schedule) {
+      setSchedForm({
+        scheduleType: schedule.scheduleType || 'OFF',
+        scheduledTime: schedule.scheduledTime || '03:00',
+        scheduledDayOfWeek: schedule.scheduledDayOfWeek ?? 1,
+        timezone: schedule.timezone || 'UTC',
+      });
+    }
+  }, [schedule]);
+
+  const handleSaveSite = async () => {
+    setSiteSaving(true);
+    try {
+      const payload = {
+        ...siteForm,
+        maxPagesPerCrawl: Number(siteForm.maxPagesPerCrawl),
+        crawlDepth: Number(siteForm.crawlDepth),
+        excludeURLPatterns: siteForm.excludeURLPatterns
+          .split('\n').map(s => s.trim()).filter(Boolean),
+      };
+      await onSaveSiteConfig(payload);
+      setSiteSaved(true);
+      setTimeout(() => setSiteSaved(false), 2000);
+    } finally {
+      setSiteSaving(false);
+    }
+  };
+
+  const handleSaveSchedule = async () => {
+    setSchedSaving(true);
+    try {
+      await onSaveSchedule(schedForm);
+      setSchedSaved(true);
+      setTimeout(() => setSchedSaved(false), 2000);
+    } finally {
+      setSchedSaving(false);
+    }
+  };
+
+  const speedIdx = CRAWL_SPEED_VALUES.indexOf(siteForm.crawlSpeed);
+
+  return (
+    <div className="border-t border-gray-100 bg-white">
+      {/* ── Site Info ── */}
+      <div className="px-5 pt-5 pb-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-[13px] font-bold text-gray-900">Site Info</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">Crawl parameters passed to DataForSEO</div>
+          </div>
+          <button
+            onClick={handleSaveSite}
+            disabled={siteSaving}
+            className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${siteSaved ? 'bg-green-500 text-white' : 'bg-gray-900 text-white hover:bg-black disabled:opacity-50'}`}
+          >
+            {siteSaved ? <><CheckCircleIcon className="w-3.5 h-3.5" /> Saved</> : siteSaving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* URL + Max pages */}
+          <div className="flex gap-3">
+            <div className="flex-1 min-w-0">
+              <label className="block text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-1">Start URL</label>
+              <input
+                type="url"
+                value={siteForm.siteURL}
+                onChange={e => setSiteForm(f => ({ ...f, siteURL: e.target.value }))}
+                placeholder="https://example.com"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#d92d78]/30 focus:border-[#d92d78]"
+              />
+            </div>
+            <div className="w-36 shrink-0">
+              <label className="block text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-1">Max pages per crawl</label>
+              <input
+                type="number"
+                min={1}
+                max={50000}
+                value={siteForm.maxPagesPerCrawl}
+                onChange={e => setSiteForm(f => ({ ...f, maxPagesPerCrawl: e.target.value }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#d92d78]/30 focus:border-[#d92d78]"
+              />
+            </div>
+          </div>
+
+          {/* Crawl depth */}
+          <div className="w-28">
+            <label className="block text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-1">Crawl depth <span className="normal-case font-normal">— link levels</span></label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={siteForm.crawlDepth}
+              onChange={e => setSiteForm(f => ({ ...f, crawlDepth: e.target.value }))}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#d92d78]/30 focus:border-[#d92d78]"
+            />
+          </div>
+
+          {/* Crawl speed */}
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-2">
+              Crawl speed — <span className="normal-case font-normal text-gray-600">{CRAWL_SPEED_LABELS[speedIdx === -1 ? 1 : speedIdx]} · {speedIdx === 0 ? '1' : speedIdx === 1 ? '5' : '10'} req/sec</span>
+            </label>
+            <div className="relative px-1">
+              <input
+                type="range" min={0} max={2} step={1}
+                value={speedIdx === -1 ? 1 : speedIdx}
+                onChange={e => setSiteForm(f => ({ ...f, crawlSpeed: CRAWL_SPEED_VALUES[e.target.value] }))}
+                className="w-full accent-[#d92d78]"
+              />
+              <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+                {CRAWL_SPEED_LABELS.map(l => <span key={l}>{l}</span>)}
+              </div>
+            </div>
+          </div>
+
+          {/* Exclude URLs */}
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-1">
+              Exclude URLs <span className="normal-case font-normal">— one pattern per line, supports *</span>
+            </label>
+            <textarea
+              rows={4}
+              value={siteForm.excludeURLPatterns}
+              onChange={e => setSiteForm(f => ({ ...f, excludeURLPatterns: e.target.value }))}
+              placeholder="/admin/*&#10;/preview/*&#10;*/cart"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px] text-gray-800 font-mono focus:outline-none focus:ring-2 focus:ring-[#d92d78]/30 focus:border-[#d92d78] resize-none"
+            />
+          </div>
+
+          {/* Toggles */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between py-2 border-b border-gray-50">
+              <div>
+                <div className="text-[13px] font-medium text-gray-800">Include subdomains?</div>
+                <div className="text-[11px] text-gray-400">Follow links to *.{siteForm.siteURL ? (siteForm.siteURL.replace(/^https?:\/\//, '').split('/')[0]) : 'example.com'}</div>
+              </div>
+              <Toggle checked={siteForm.includeSubdomains} onChange={v => setSiteForm(f => ({ ...f, includeSubdomains: v }))} />
+            </div>
+            <div className="flex items-center justify-between py-2">
+              <div>
+                <div className="text-[13px] font-medium text-gray-800">Respect robots.txt?</div>
+                <div className="text-[11px] text-gray-400">Honour Disallow rules and crawl-delay directives</div>
+              </div>
+              <Toggle checked={siteForm.respectRobotsTxt} onChange={v => setSiteForm(f => ({ ...f, respectRobotsTxt: v }))} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Schedule ── */}
+      <div className="px-5 pt-4 pb-6 border-t border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="text-[13px] font-bold text-gray-900">Schedule</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">When to run the full site analysis automatically</div>
+          </div>
+          <button
+            onClick={handleSaveSchedule}
+            disabled={schedSaving}
+            className={`px-3 py-1.5 text-[12px] font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${schedSaved ? 'bg-green-500 text-white' : 'bg-gray-900 text-white hover:bg-black disabled:opacity-50'}`}
+          >
+            {schedSaved ? <><CheckCircleIcon className="w-3.5 h-3.5" /> Saved</> : schedSaving ? 'Saving…' : 'Save'}
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          {/* Schedule type pills */}
+          <div>
+            <label className="block text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-2">Frequency</label>
+            <div className="flex flex-wrap gap-2">
+              {SITE_SCHEDULE_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setSchedForm(f => ({ ...f, scheduleType: opt.value }))}
+                  className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors ${schedForm.scheduleType === opt.value ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Time + day (shown only when applicable) */}
+          {schedForm.scheduleType !== 'OFF' && schedForm.scheduleType !== 'ON_DEPLOY' && schedForm.scheduleType !== 'MANUAL' && (
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-1">Time (UTC)</label>
+                <input
+                  type="time"
+                  value={schedForm.scheduledTime}
+                  onChange={e => setSchedForm(f => ({ ...f, scheduledTime: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#d92d78]/30 focus:border-[#d92d78]"
+                />
+              </div>
+              {schedForm.scheduleType === 'WEEKLY' && (
+                <div className="flex-1">
+                  <label className="block text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-1">Day</label>
+                  <div className="flex gap-1">
+                    {DAYS.map((d, i) => (
+                      <button
+                        key={d}
+                        onClick={() => setSchedForm(f => ({ ...f, scheduledDayOfWeek: i }))}
+                        className={`flex-1 py-2 rounded text-[11px] font-medium border transition-colors ${schedForm.scheduledDayOfWeek === i ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'}`}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {schedForm.scheduleType === 'ON_DEPLOY' && (
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] text-gray-600">
+              Trigger via webhook after deploy. Copy the webhook URL from <span className="font-medium text-gray-900">Configure → Tools & APIs</span>.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const AutomatedTasksTab = ({ onOpenConfigure }) => {
   const [taskState, setTaskState] = useState({});
@@ -373,64 +660,52 @@ const AutomatedTasksTab = ({ onOpenConfigure }) => {
 };
 
 const AgentsLayout = () => {
+  const dispatch = useDispatch();
+
+  // UI state — stays local
   const [selectedAgent, setSelectedAgent] = useState('seo');
   const [activeTab, setActiveTab] = useState('chat');
   const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false);
   const [isConfigureModalOpen, setIsConfigureModalOpen] = useState(false);
   const [selectedOutputTab, setSelectedOutputTab] = useState('report');
-
-  // SEO real data state
-  const [seoStatus, setSeoStatus] = useState(null);
-  const [seoModelConfig, setSeoModelConfig] = useState(null);
-  const [seoSchedule, setSeoSchedule] = useState(null);
-  const [seoSiteConfig, setSeoSiteConfig] = useState(null);
-  const [seoReport, setSeoReport] = useState(null);
-  const [seoReportDetail, setSeoReportDetail] = useState(null);
-  const [seoExecutions, setSeoExecutions] = useState([]);
-  const [seoLoading, setSeoLoading] = useState(true);
-  const [runningAnalysis, setRunningAnalysis] = useState(false);
   const [runMessage, setRunMessage] = useState(null);
 
-  const loadSeoData = useCallback(async () => {
-    setSeoLoading(true);
-    try {
-      const [statusRes, modelRes, scheduleRes, siteRes, reportRes, execRes] = await Promise.allSettled([
-        getAgentStatus(),
-        getModelConfig('SEO'),
-        getSeoSchedule(),
-        getSeoSiteConfig(),
-        getLatestSeoReport(),
-        getSeoExecutions(),
-      ]);
-      if (statusRes.status === 'fulfilled') setSeoStatus(statusRes.value);
-      if (modelRes.status === 'fulfilled') setSeoModelConfig(modelRes.value);
-      if (scheduleRes.status === 'fulfilled') setSeoSchedule(scheduleRes.value);
-      if (siteRes.status === 'fulfilled') setSeoSiteConfig(siteRes.value);
-      const report = reportRes.status === 'fulfilled' ? (reportRes.value?.report || null) : null;
-      setSeoReport(report);
-      if (report?.id) {
-        getSeoReport(report.id).then(detail => setSeoReportDetail(detail)).catch(() => {});
-      }
-      if (execRes.status === 'fulfilled') setSeoExecutions(execRes.value?.executions || []);
-    } catch (_) {}
-    setSeoLoading(false);
-  }, []);
+  // Data state — from Redux
+  const seoStatus = useSelector(selectSeoStatus);
+  const seoModelConfig = useSelector(selectSeoModelConfig);
+  const seoSchedule = useSelector(selectSeoSchedule);
+  const seoSiteConfig = useSelector(selectSeoSiteConfig);
+  const seoReport = useSelector(selectLatestReport);
+  const seoReportDetail = useSelector(selectReportDetail);
+  const seoExecutions = useSelector(selectExecutions);
+  const agentLoading = useSelector(selectAgentLoading);
+  const seoLoading = agentLoading.initial ?? false;
+  const runningAnalysis = agentLoading.running ?? false;
 
   useEffect(() => {
-    loadSeoData();
-  }, [loadSeoData]);
+    dispatch(doLoadSeoData());
+  }, [dispatch]);
+
+  // WebSocket — real-time execution updates
+  useEffect(() => {
+    const handler = (e) => dispatch(seoExecutionUpdated(e.detail));
+    window.addEventListener('SEO_EXECUTION_UPDATE', handler);
+    return () => window.removeEventListener('SEO_EXECUTION_UPDATE', handler);
+  }, [dispatch]);
+
+  const loadSeoData = useCallback(() => {
+    dispatch(doLoadSeoData());
+  }, [dispatch]);
 
   const handleRunAnalysis = async () => {
-    setRunningAnalysis(true);
     setRunMessage(null);
-    try {
-      const res = await runSeoAnalysis({ siteUrl: seoSiteConfig?.siteUrl });
-      setRunMessage({ type: 'success', text: `Analysis started — execution ID: ${res.executionId || 'queued'}` });
-      setTimeout(() => loadSeoData(), 3000);
-    } catch (e) {
-      setRunMessage({ type: 'error', text: e?.response?.data?.error || 'Failed to start analysis' });
+    const result = await dispatch(doRunAnalysis({ siteUrl: seoSiteConfig?.siteUrl }));
+    if (doRunAnalysis.fulfilled.match(result)) {
+      setRunMessage({ type: 'success', text: `Analysis started — execution ID: ${result.payload?.executionId || 'queued'}` });
+      setTimeout(() => dispatch(doLoadSeoData()), 3000);
+    } else {
+      setRunMessage({ type: 'error', text: result.payload || 'Failed to start analysis' });
     }
-    setRunningAnalysis(false);
   };
 
   const seoEnabled = seoStatus?.agents?.SEO?.isEnabled ?? false;
@@ -639,10 +914,20 @@ const AgentsLayout = () => {
             </div>
           </>
         ) : (
-          <AutomatedTasksTab
-            seoEnabled={seoEnabled}
-            onOpenConfigure={() => setIsConfigureModalOpen(true)}
-          />
+          <div className="flex-1 overflow-y-auto">
+            <AutomatedTasksTab
+              seoEnabled={seoEnabled}
+              onOpenConfigure={() => setIsConfigureModalOpen(true)}
+            />
+            {currentAgent.id === 'seo' && (
+              <SiteInfoSection
+                siteConfig={seoSiteConfig}
+                schedule={seoSchedule}
+                onSaveSiteConfig={(cfg) => dispatch(doSaveSiteConfig(cfg))}
+                onSaveSchedule={(sch) => dispatch(doSaveSchedule(sch))}
+              />
+            )}
+          </div>
         )}
       </div>
 

@@ -19,6 +19,13 @@ socket.on("disconnect", (reason) => {
 
 socket.on("message", (data) => {
     console.log("Received message:", data);
+    if (data?.type === "SEO_EXECUTION_UPDATE") {
+        window.dispatchEvent(new CustomEvent("SEO_EXECUTION_UPDATE", { detail: data }));
+    }
+});
+
+socket.on("SEO_EXECUTION_UPDATE", (data) => {
+    window.dispatchEvent(new CustomEvent("SEO_EXECUTION_UPDATE", { detail: data }));
 });
 
 export default socket;

@@ -19,6 +19,7 @@ import roleReducer from "./slice/roleSlice.js";
 import gitIntegrationReducer from "./slice/gitIntegrationSlice.js";
 import documentReducer from "./slice/documentSlice.js";
 import userTasksReducer from "./slice/userTasksSlice.js";
+import agentReducer from "./slice/agentSlice.js";
 
 export const store = configureStore({
   reducer: {
@@ -41,6 +42,7 @@ export const store = configureStore({
     role: roleReducer,
     gitIntegration: gitIntegrationReducer,
     document: documentReducer,
-    userTasks: userTasksReducer
+    userTasks: userTasksReducer,
+    agent: agentReducer,
   }
 });

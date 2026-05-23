@@ -2,6 +2,7 @@ import './App.css';
 import { BrowserRouter, Route, Switch, Redirect } from 'react-router-dom';
 
 import AuthGuard from './auth/AuthGuard';
+import GSCCallback from './pages/gsc-callback';
 import ForgotPassword from './auth/ForgotPassword';
 import ResetPassword from "./auth/ResetPassword";
 import Login from './auth/Login';
@@ -23,6 +24,11 @@ function App() {
         {/* OAuth callback route must be before /auth to avoid PublicGuard redirect */}
         <Route path="/auth/callback">
           <OAuthCallback />
+        </Route>
+
+        {/* GSC OAuth popup callback — no auth guard needed */}
+        <Route path="/gsc-callback">
+          <GSCCallback />
         </Route>
 
         <Route path="/auth">
