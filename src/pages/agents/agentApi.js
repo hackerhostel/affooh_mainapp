@@ -163,3 +163,51 @@ export async function disconnectGSC() {
   });
   return data;
 }
+
+export async function getGSCProperties() {
+  const { data } = await axios.get(`${BASE}/agents/seo/gsc/properties`, {
+    headers: headers(),
+  });
+  return data;
+}
+
+export async function saveGSCProperty(selectedProperty) {
+  const { data } = await axios.put(`${BASE}/agents/seo/gsc/property`, { selectedProperty }, {
+    headers: headers(),
+  });
+  return data;
+}
+
+// ─── SEO Tasks ───────────────────────────────────────────────────────────────
+
+export async function getSeoTasks() {
+  const { data } = await axios.get(`${BASE}/agents/seo/tasks`, {
+    headers: headers(),
+  });
+  return data;
+}
+
+export async function saveSeoTask(taskType, payload) {
+  const { data } = await axios.put(`${BASE}/agents/seo/tasks/${taskType}`, payload, {
+    headers: headers(),
+  });
+  return data;
+}
+
+export async function runSeoTask(taskType) {
+  const { data } = await axios.post(`${BASE}/agents/seo/tasks/${taskType}/run`, {}, {
+    headers: headers(),
+  });
+  return data;
+}
+
+// ─── Tool Toggle ─────────────────────────────────────────────────────────────
+
+export async function toggleTool(provider, isEnabled) {
+  const { data } = await axios.put(
+    `${BASE}/agents/seo/tools/${provider}/toggle`,
+    { isEnabled },
+    { headers: headers() }
+  );
+  return data;
+}

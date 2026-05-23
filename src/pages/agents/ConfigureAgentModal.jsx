@@ -14,18 +14,23 @@ import {
   EyeIcon,
   EyeSlashIcon,
   ArrowPathIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 import { PlayIcon } from '@heroicons/react/24/solid';
 import {
   getModelConfig,
   saveModelConfig,
   testModelConfig,
+  deleteModelConfig,
   getCredentials,
   saveCredential,
   testCredential,
   deleteCredential,
   getGSCAuthURL,
   disconnectGSC,
+  getGSCProperties,
+  saveGSCProperty,
+  toggleTool,
 } from './agentApi';
 
 const Toggle = ({ checked, onChange }) => (
@@ -79,20 +84,21 @@ const ModelTab = ({ agentType }) => {
     setLoading(true);
     setError(null);
     try {
-      const cfg = await getModelConfig(agentType);
-      if (cfg && cfg.aiProvider) {
+      const res = await getModelConfig(agentType);
+      if (res && res.config) {
+        const c = res.config;
         const idx = PROVIDER_MODELS.findIndex(
-          (m) => m.provider === cfg.aiProvider && (m.modelId === cfg.modelID || m.provider === 'LOCAL')
+          (m) => m.provider === c.aiProvider && (m.modelId === c.modelID || m.provider === 'LOCAL')
         );
         setSelectedCard(idx >= 0 ? idx : null);
-        setCustomModelId(cfg.modelID || '');
-        setBaseURL(cfg.baseURL || '');
-        setTemperature(parseFloat(cfg.temperature) || 0.4);
-        setTopP(parseFloat(cfg.topP) || 0.9);
-        setMaxTokens(cfg.maxTokens || 4096);
-        setTimeoutSecs(cfg.timeoutSeconds || 60);
-        setIsConfigured(!!cfg.isConfigured);
-        setHasApiKey(!!cfg.hasApiKey);
+        setCustomModelId(c.modelID || '');
+        setBaseURL(c.baseURL || '');
+        setTemperature(parseFloat(c.temperature) || 0.4);
+        setTopP(parseFloat(c.topP) || 0.9);
+        setMaxTokens(c.maxTokens || 4096);
+        setTimeoutSecs(c.timeoutSeconds || 60);
+        setIsConfigured(!!res.configured);
+        setHasApiKey(!!c.hasApiKey);
       }
     } catch (e) {
       const status = e?.response?.status;
@@ -111,8 +117,8 @@ const ModelTab = ({ agentType }) => {
     setTestResult(null);
     try {
       const payload = {
-        aiProvider: selectedModel.provider,
-        modelID: selectedModel.provider === 'LOCAL' ? customModelId : selectedModel.modelId,
+        provider: selectedModel.provider,
+        modelId: selectedModel.provider === 'LOCAL' ? customModelId : selectedModel.modelId,
         temperature,
         topP,
         maxTokens,
@@ -359,20 +365,33 @@ const ModelTab = ({ agentType }) => {
 
 // ─── Tools & APIs Tab ────────────────────────────────────────────────────────
 
-const ProviderRow = ({ provider, label, description, type, status, onSave, onTest, onDelete, onConnect, onDisconnect, testDisabled }) => {
+const ProviderRow = ({ provider, label, description, type, status, onSave, onTest, onDelete, onConnect, onDisconnect, testDisabled, properties, selectedProperty, onSelectProperty }) => {
   const [apiKey, setApiKey] = useState('');
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [showPass, setShowPass] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
   const handleSave = async () => {
-    if (!apiKey) return;
+    if (type === 'basic-auth') {
+      if (!login || !password) return;
+    } else {
+      if (!apiKey) return;
+    }
     setSaving(true);
     setFeedback(null);
     try {
-      await onSave(apiKey);
-      setApiKey('');
+      if (type === 'basic-auth') {
+        await onSave({ login, password });
+        setLogin('');
+        setPassword('');
+      } else {
+        await onSave(apiKey);
+        setApiKey('');
+      }
       setFeedback({ ok: true, message: 'Saved' });
     } catch (e) {
       setFeedback({ ok: false, message: e?.response?.data?.error || 'Save failed' });
@@ -398,7 +417,7 @@ const ProviderRow = ({ provider, label, description, type, status, onSave, onTes
 
   if (type === 'oauth') {
     return (
-      <div className="border border-gray-200 rounded-xl bg-white p-3.5">
+      <div className="border border-gray-200 rounded-xl bg-white p-3.5 space-y-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="text-gray-400"><BoltIcon className="w-4 h-4" /></div>
@@ -430,6 +449,25 @@ const ProviderRow = ({ provider, label, description, type, status, onSave, onTes
             )}
           </div>
         </div>
+        {/* Property selector — only shown when connected and properties are loaded */}
+        {isConnected && properties && properties.length > 0 && (
+          <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+            <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider shrink-0">Property</label>
+            <select
+              value={selectedProperty || ''}
+              onChange={e => onSelectProperty && onSelectProperty(e.target.value)}
+              className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] text-gray-800 focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+            >
+              <option value="">Select a property…</option>
+              {properties.map(p => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {isConnected && properties && properties.length === 0 && (
+          <div className="text-[11px] text-gray-400 pt-1 border-t border-gray-100">No GSC properties found on this account.</div>
+        )}
       </div>
     );
   }
@@ -445,6 +483,72 @@ const ProviderRow = ({ provider, label, description, type, status, onSave, onTes
           </div>
         </div>
         <span className="text-[11px] text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md font-medium">No key required</span>
+      </div>
+    );
+  }
+
+  // type === 'basic-auth' (login + password)
+  if (type === 'basic-auth') {
+    return (
+      <div className="border border-gray-200 rounded-xl bg-white p-3.5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="text-gray-400"><BoltIcon className="w-4 h-4" /></div>
+            <div>
+              <div className="text-[13px] font-bold text-gray-900">{label}</div>
+              <div className="text-[11px] text-gray-500">{description}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {isConnected && (
+              <span className="text-[11px] text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
+                <CheckCircleIcon className="w-3 h-3" /> Connected
+              </span>
+            )}
+            {isConnected && (
+              <button onClick={onDelete} className="text-[12px] text-red-500 hover:text-red-700 font-medium px-2 py-1 rounded transition-colors">Remove</button>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder={isConnected ? 'Login (replace)' : 'Login'}
+            value={login}
+            onChange={e => setLogin(e.target.value)}
+            className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[13px] font-mono focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+          />
+          <div className="relative flex-1">
+            <input
+              type={showPass ? 'text' : 'password'}
+              placeholder={isConnected ? 'Password (replace)' : 'Password'}
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full px-3 py-1.5 pr-9 bg-white border border-gray-200 rounded-lg text-[13px] font-mono focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+            />
+            <button type="button" onClick={() => setShowPass(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              {showPass ? <EyeSlashIcon className="w-3.5 h-3.5" /> : <EyeIcon className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+          <button
+            onClick={handleSave}
+            disabled={saving || !login || !password}
+            className="px-3 py-1.5 text-[12px] font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+          >
+            {saving && <ArrowPathIcon className="w-3 h-3 animate-spin" />} Save
+          </button>
+          {isConnected && (
+            <button onClick={handleTest} disabled={testing || testDisabled} className="px-3 py-1.5 text-[12px] font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1">
+              {testing ? <ArrowPathIcon className="w-3 h-3 animate-spin" /> : <PlayIcon className="w-3 h-3" />} Test
+            </button>
+          )}
+        </div>
+        {feedback && (
+          <div className={`flex items-center gap-1.5 text-[11px] font-medium ${feedback.ok ? 'text-green-600' : 'text-red-600'}`}>
+            {feedback.ok ? <CheckCircleIcon className="w-3.5 h-3.5" /> : <ExclamationCircleIcon className="w-3.5 h-3.5" />}
+            {feedback.message}
+          </div>
+        )}
       </div>
     );
   }
@@ -520,27 +624,201 @@ const ProviderRow = ({ provider, label, description, type, status, onSave, onTes
   );
 };
 
+const StaticToolRow = ({
+  name, description, statusType, statusText,
+  enabled, onToggle,
+  provider, keyLabel = 'API KEY', keyField = 'apiKey',
+  isConnected, onSave, onTest, onDelete,
+}) => {
+  const [open, setOpen] = useState(false);
+  const [keyVal, setKeyVal] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  const handleSave = async () => {
+    if (!keyVal.trim()) return;
+    setSaving(true);
+    setFeedback(null);
+    try {
+      const result = await onSave({ [keyField]: keyVal.trim() });
+      console.log('[StaticToolRow] save result:', result);
+      setKeyVal('');
+      setFeedback({ ok: true, message: 'Saved successfully.' });
+    } catch (e) {
+      console.error('[StaticToolRow] save error:', e?.response?.status, e?.response?.data);
+      setFeedback({ ok: false, message: e?.response?.data?.error || 'Save failed.' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setFeedback(null);
+    try {
+      const res = await onTest();
+      setFeedback({ ok: true, message: res?.message || 'Connection successful.' });
+    } catch (e) {
+      setFeedback({ ok: false, message: e?.response?.data?.error || 'Test failed.' });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const canExpand = statusType !== 'no-key';
+
+  return (
+    <div className={`border rounded-xl bg-white transition-opacity ${enabled ? 'border-gray-200' : 'border-gray-100 opacity-60'}`}>
+      {/* Header row */}
+      <div
+        className={`flex items-center gap-3 p-3.5 ${canExpand ? 'cursor-pointer hover:bg-gray-50 transition-colors' : ''}`}
+        onClick={canExpand ? () => setOpen(v => !v) : undefined}
+      >
+        <div className="text-gray-400"><BoltIcon className="w-4 h-4" /></div>
+        <div className="flex-1 min-w-0">
+          <div className="text-[13px] font-bold text-gray-900 font-mono">{name}</div>
+          <div className="text-[11px] text-gray-500">{description}</div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {isConnected ? (
+            <span className="text-[11px] text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
+              <CheckCircleIcon className="w-3 h-3" /> Connected
+            </span>
+          ) : statusType === 'masked' ? (
+            <span className="text-[11px] text-gray-400 font-mono tracking-widest">·········· {statusText}</span>
+          ) : statusType === 'not-connected' ? (
+            <span className="text-[11px] text-gray-400">Not connected</span>
+          ) : statusType === 'no-key' ? (
+            <span className="text-[11px] text-gray-500 bg-gray-100 border border-gray-200 px-2 py-0.5 rounded-md font-medium">No key required</span>
+          ) : null}
+          <Toggle checked={!!enabled} onChange={() => onToggle && onToggle(!enabled)} />
+          {canExpand && (
+            <ChevronDownIcon className={`w-4 h-4 text-gray-300 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+          )}
+        </div>
+      </div>
+
+      {/* Expanded credential panel */}
+      {canExpand && open && (
+        <div className="border-t border-gray-100 bg-[#fafafa] px-4 py-3 space-y-2.5">
+          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">{keyLabel}</label>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type={showKey ? 'text' : 'password'}
+                placeholder={isConnected ? '•••••••• (replace key)' : `Enter ${keyLabel.toLowerCase()}…`}
+                value={keyVal}
+                onChange={e => setKeyVal(e.target.value)}
+                className="w-full px-3 py-1.5 pr-9 bg-white border border-gray-200 rounded-lg text-[13px] font-mono focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+              />
+              <button type="button" onClick={() => setShowKey(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {showKey ? <EyeSlashIcon className="w-3.5 h-3.5" /> : <EyeIcon className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !keyVal.trim()}
+              className="px-3 py-1.5 text-[12px] font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              {saving && <ArrowPathIcon className="w-3 h-3 animate-spin" />} Save
+            </button>
+            {isConnected && onTest && (
+              <button
+                type="button"
+                onClick={handleTest}
+                disabled={testing}
+                className="px-3 py-1.5 text-[12px] font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1"
+              >
+                {testing ? <ArrowPathIcon className="w-3 h-3 animate-spin" /> : <PlayIcon className="w-3 h-3" />} Test
+              </button>
+            )}
+            {isConnected && onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="text-[12px] text-red-500 hover:text-red-700 font-medium px-2 py-1.5 rounded transition-colors"
+              >
+                Remove
+              </button>
+            )}
+          </div>
+          {feedback && (
+            <div className={`flex items-center gap-1.5 text-[11px] font-medium ${feedback.ok ? 'text-green-600' : 'text-red-600'}`}>
+              {feedback.ok ? <CheckCircleIcon className="w-3.5 h-3.5" /> : <ExclamationCircleIcon className="w-3.5 h-3.5" />}
+              {feedback.message}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const SectionLabel = ({ children }) => (
+  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pt-4 pb-1 first:pt-0">{children}</div>
+);
+
+// Default isEnabled for providers not yet in DB
+const TOOL_DEFAULT_ENABLED = {
+  SERP_API: true, AHREFS: true, DATAFORSEO: true, GSC: true,
+  SCREAMING_FROG: false, PAGESPEED: true,
+  WEB_FETCH: true, GRAMMAR_API: false,
+  LINEAR_API: true, SLACK_POST: false,
+};
+
 const ToolsTab = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [creds, setCreds] = useState({});
+  const [toolEnabled, setToolEnabled] = useState({});
+  const [gscProperties, setGscProperties] = useState(null);
+  const [gscSelectedProperty, setGscSelectedProperty] = useState('');
+
+  const loadGSCProperties = useCallback(async () => {
+    try {
+      const data = await getGSCProperties();
+      setGscProperties(data.properties || []);
+      setGscSelectedProperty(data.selectedProperty || '');
+    } catch (_) {
+      setGscProperties([]);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await getCredentials();
-      setCreds(data.credentials || {});
+      const raw = data.credentials || {};
+      setCreds(raw);
+      const enabled = {};
+      Object.keys(TOOL_DEFAULT_ENABLED).forEach(p => {
+        enabled[p] = raw[p] !== undefined ? Boolean(raw[p].isEnabled) : TOOL_DEFAULT_ENABLED[p];
+      });
+      setToolEnabled(enabled);
+      if (raw['GSC']?.isConnected) loadGSCProperties();
     } catch (e) {
       const status = e?.response?.status;
-      // 4xx = no credentials configured yet — show empty state, not an error
       if (!status || status >= 500) setError('Failed to load credentials. Please try again.');
+      setToolEnabled({ ...TOOL_DEFAULT_ENABLED });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadGSCProperties]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleToggle = async (provider, newVal) => {
+    setToolEnabled(prev => ({ ...prev, [provider]: newVal }));
+    try {
+      await toggleTool(provider.toLowerCase(), newVal);
+    } catch (e) {
+      setToolEnabled(prev => ({ ...prev, [provider]: !newVal }));
+    }
+  };
 
   const gscStatus = creds['GSC']?.isConnected ? 'connected' : 'disconnected';
   const dfsStatus = creds['DATAFORSEO']?.isConnected ? 'connected' : 'disconnected';
@@ -548,7 +826,19 @@ const ToolsTab = () => {
   const handleGSCConnect = async () => {
     try {
       const { authURL } = await getGSCAuthURL();
-      window.location.href = authURL;
+      const popup = window.open(authURL, 'gsc-oauth', 'width=600,height=700,noopener,noreferrer');
+      if (!popup) { window.open(authURL, '_blank'); return; }
+      const timer = setInterval(async () => {
+        if (popup.closed) {
+          clearInterval(timer);
+          // Refetch creds to check if GSC is now connected
+          const data = await getCredentials().catch(() => null);
+          if (data?.credentials?.GSC?.isConnected) {
+            setCreds(prev => ({ ...prev, GSC: { isConnected: true } }));
+            loadGSCProperties();
+          }
+        }
+      }, 600);
     } catch (e) {
       console.error('GSC connect error', e);
     }
@@ -558,10 +848,17 @@ const ToolsTab = () => {
     if (!window.confirm('Disconnect Google Search Console?')) return;
     try {
       await disconnectGSC();
-      setCreds((prev) => ({ ...prev, GSC: { ...prev.GSC, isConnected: false } }));
+      setCreds(prev => ({ ...prev, GSC: { ...prev.GSC, isConnected: false } }));
+      setGscProperties(null);
+      setGscSelectedProperty('');
     } catch (e) {
       console.error('GSC disconnect error', e);
     }
+  };
+
+  const handleGSCPropertyChange = async (property) => {
+    setGscSelectedProperty(property);
+    saveGSCProperty(property).catch(() => {});
   };
 
   if (loading) {
@@ -576,7 +873,7 @@ const ToolsTab = () => {
     <div className="max-w-[700px]">
       <div className="mb-4">
         <div className="text-[18px] font-bold text-gray-900 mb-0.5">Tools & APIs</div>
-        <p className="text-[13px] text-gray-500">Connect data sources the SEO agent uses during each run.</p>
+        <p className="text-[13px] text-gray-500">Functions the agent may call autonomously. Each call is logged.</p>
       </div>
 
       {error && (
@@ -585,18 +882,47 @@ const ToolsTab = () => {
         </div>
       )}
 
+      {/* ── SEARCH & SEO ── */}
+      <SectionLabel>Search & SEO</SectionLabel>
       <div className="space-y-2">
+        <StaticToolRow
+          name="serp_api"
+          description="Google SERP scraping"
+          statusType={creds['SERP_API']?.isConnected ? 'connected' : 'not-connected'}
+          isConnected={!!creds['SERP_API']?.isConnected}
+          provider="SERP_API"
+          keyLabel="API KEY"
+          keyField="apiKey"
+          enabled={toolEnabled['SERP_API']}
+          onToggle={v => handleToggle('SERP_API', v)}
+          onSave={async payload => { const data = await saveCredential('serp_api', payload); setCreds(p => ({ ...p, SERP_API: { ...p.SERP_API, isConnected: true } })); return data; }}
+          onTest={() => testCredential('serp_api')}
+          onDelete={async () => { await deleteCredential('serp_api'); setCreds(p => ({ ...p, SERP_API: { ...p.SERP_API, isConnected: false } })); }}
+        />
+        <StaticToolRow
+          name="ahrefs_export"
+          description="Backlinks & keyword data"
+          statusType={creds['AHREFS']?.isConnected ? 'connected' : 'not-connected'}
+          isConnected={!!creds['AHREFS']?.isConnected}
+          provider="AHREFS"
+          keyLabel="API KEY"
+          keyField="apiKey"
+          enabled={toolEnabled['AHREFS']}
+          onToggle={v => handleToggle('AHREFS', v)}
+          onSave={async payload => { const data = await saveCredential('ahrefs', payload); setCreds(p => ({ ...p, AHREFS: { ...p.AHREFS, isConnected: true } })); return data; }}
+          onTest={() => testCredential('ahrefs')}
+          onDelete={async () => { await deleteCredential('ahrefs'); setCreds(p => ({ ...p, AHREFS: { ...p.AHREFS, isConnected: false } })); }}
+        />
         <ProviderRow
           provider="DATAFORSEO"
           label="DataForSEO"
           description="Site crawl, backlink data & SERP analysis"
-          type="apikey"
+          type="basic-auth"
           status={dfsStatus}
-          onSave={(key) => saveCredential('dataforseo', { apiKey: key }).then(() => setCreds((p) => ({ ...p, DATAFORSEO: { isConnected: true } })))}
+          onSave={async (creds) => { const data = await saveCredential('dataforseo', creds); setCreds((p) => ({ ...p, DATAFORSEO: { isConnected: true } })); return data; }}
           onTest={() => testCredential('dataforseo')}
-          onDelete={() => deleteCredential('dataforseo').then(() => setCreds((p) => ({ ...p, DATAFORSEO: { isConnected: false } })))}
+          onDelete={async () => { await deleteCredential('dataforseo'); setCreds((p) => ({ ...p, DATAFORSEO: { isConnected: false } })); }}
         />
-
         <ProviderRow
           provider="GSC"
           label="Google Search Console"
@@ -605,14 +931,90 @@ const ToolsTab = () => {
           status={gscStatus}
           onConnect={handleGSCConnect}
           onDisconnect={handleGSCDisconnect}
+          properties={gscProperties}
+          selectedProperty={gscSelectedProperty}
+          onSelectProperty={handleGSCPropertyChange}
         />
-
+        <StaticToolRow
+          name="screaming_frog_cli"
+          description="Technical site crawl"
+          statusType={creds['SCREAMING_FROG']?.isConnected ? 'connected' : 'not-connected'}
+          isConnected={!!creds['SCREAMING_FROG']?.isConnected}
+          provider="SCREAMING_FROG"
+          keyLabel="LICENSE KEY"
+          keyField="licenseKey"
+          enabled={toolEnabled['SCREAMING_FROG']}
+          onToggle={v => handleToggle('SCREAMING_FROG', v)}
+          onSave={async payload => { const data = await saveCredential('screaming_frog', payload); setCreds(p => ({ ...p, SCREAMING_FROG: { ...p.SCREAMING_FROG, isConnected: true } })); return data; }}
+          onDelete={async () => { await deleteCredential('screaming_frog'); setCreds(p => ({ ...p, SCREAMING_FROG: { ...p.SCREAMING_FROG, isConnected: false } })); }}
+        />
         <ProviderRow
           provider="PAGESPEED"
           label="Google PageSpeed Insights"
           description="Core Web Vitals — LCP, CLS, FID per page"
-          type="no-key"
-          status="connected"
+          type="apikey"
+          status={creds['PAGESPEED']?.isConnected ? 'connected' : 'disconnected'}
+          onSave={async (key) => { await saveCredential('pagespeed', { apiKey: key }); setCreds(p => ({ ...p, PAGESPEED: { isConnected: true } })); }}
+          onTest={() => testCredential('pagespeed')}
+          onDelete={async () => { await deleteCredential('pagespeed'); setCreds(p => ({ ...p, PAGESPEED: { isConnected: false } })); }}
+        />
+      </div>
+
+      {/* ── WRITING & WEB ── */}
+      <SectionLabel>Writing & Web</SectionLabel>
+      <div className="space-y-2">
+        <StaticToolRow
+          name="web_fetch"
+          description="Read public URLs"
+          statusType="no-key"
+          enabled={toolEnabled['WEB_FETCH']}
+          onToggle={v => handleToggle('WEB_FETCH', v)}
+        />
+        <StaticToolRow
+          name="grammar_api"
+          description="Style + grammar pass"
+          statusType={creds['GRAMMAR_API']?.isConnected ? 'connected' : 'not-connected'}
+          isConnected={!!creds['GRAMMAR_API']?.isConnected}
+          provider="GRAMMAR_API"
+          keyLabel="API KEY"
+          keyField="apiKey"
+          enabled={toolEnabled['GRAMMAR_API']}
+          onToggle={v => handleToggle('GRAMMAR_API', v)}
+          onSave={async payload => { const data = await saveCredential('grammar_api', payload); setCreds(p => ({ ...p, GRAMMAR_API: { ...p.GRAMMAR_API, isConnected: true } })); return data; }}
+          onTest={() => testCredential('grammar_api')}
+          onDelete={async () => { await deleteCredential('grammar_api'); setCreds(p => ({ ...p, GRAMMAR_API: { ...p.GRAMMAR_API, isConnected: false } })); }}
+        />
+      </div>
+
+      {/* ── WORKSPACE ── */}
+      <SectionLabel>Workspace</SectionLabel>
+      <div className="space-y-2">
+        <StaticToolRow
+          name="linear_api"
+          description="Push tasks to Linear"
+          statusType={creds['LINEAR_API']?.isConnected ? 'connected' : 'not-connected'}
+          isConnected={!!creds['LINEAR_API']?.isConnected}
+          provider="LINEAR_API"
+          keyLabel="API KEY"
+          keyField="apiKey"
+          enabled={toolEnabled['LINEAR_API']}
+          onToggle={v => handleToggle('LINEAR_API', v)}
+          onSave={async payload => { const data = await saveCredential('linear_api', payload); setCreds(p => ({ ...p, LINEAR_API: { ...p.LINEAR_API, isConnected: true } })); return data; }}
+          onTest={() => testCredential('linear_api')}
+          onDelete={async () => { await deleteCredential('linear_api'); setCreds(p => ({ ...p, LINEAR_API: { ...p.LINEAR_API, isConnected: false } })); }}
+        />
+        <StaticToolRow
+          name="slack_post"
+          description="Post updates to Slack channels"
+          statusType={creds['SLACK_POST']?.isConnected ? 'connected' : 'not-connected'}
+          isConnected={!!creds['SLACK_POST']?.isConnected}
+          provider="SLACK_POST"
+          keyLabel="WEBHOOK URL"
+          keyField="webhookUrl"
+          enabled={toolEnabled['SLACK_POST']}
+          onToggle={v => handleToggle('SLACK_POST', v)}
+          onSave={async payload => { const data = await saveCredential('slack_post', payload); setCreds(p => ({ ...p, SLACK_POST: { ...p.SLACK_POST, isConnected: true } })); return data; }}
+          onDelete={async () => { await deleteCredential('slack_post'); setCreds(p => ({ ...p, SLACK_POST: { ...p.SLACK_POST, isConnected: false } })); }}
         />
       </div>
     </div>
@@ -623,6 +1025,7 @@ const ToolsTab = () => {
 
 const ConfigureAgentModal = ({ isOpen, onClose, agent }) => {
   const [activeTab, setActiveTab] = useState('identity');
+  const [footerSaved, setFooterSaved] = useState(false);
 
   const [temperature, setTemperature] = useState(0.4);
   const [topP, setTopP] = useState(0.9);
@@ -932,8 +1335,14 @@ const ConfigureAgentModal = ({ isOpen, onClose, agent }) => {
               <PlayIcon className="w-3.5 h-3.5" /> Test run
             </button>
             {activeTab !== 'model' && activeTab !== 'tools' && (
-              <button onClick={onClose} className="px-5 py-2 text-[13px] font-bold text-white bg-[#d92d78] hover:bg-[#c2185b] rounded-lg shadow-sm transition-colors">
-                Save changes
+              <button
+                onClick={() => {
+                  setFooterSaved(true);
+                  setTimeout(() => setFooterSaved(false), 2000);
+                }}
+                className={`px-5 py-2 text-[13px] font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5 ${footerSaved ? 'bg-green-500 text-white' : 'bg-[#d92d78] hover:bg-[#c2185b] text-white'}`}
+              >
+                {footerSaved ? <><CheckCircleIcon className="w-3.5 h-3.5" /> Saved</> : 'Save changes'}
               </button>
             )}
             {(activeTab === 'model' || activeTab === 'tools') && (

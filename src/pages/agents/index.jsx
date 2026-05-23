@@ -19,7 +19,6 @@ import {
   PaperAirplaneIcon,
   BoltIcon,
   ChevronDownIcon,
-  ChevronRightIcon,
   LinkIcon,
   ShieldExclamationIcon,
   SparklesIcon,
@@ -38,7 +37,340 @@ import {
   runSeoAnalysis,
   getSeoExecutions,
   getLatestSeoReport,
+  getSeoReport,
+  getSeoTasks,
+  saveSeoTask,
+  runSeoTask,
 } from './agentApi';
+
+const Toggle = ({ checked, onChange }) => (
+  <div
+    onClick={e => { e.stopPropagation(); onChange(); }}
+    className={`w-[40px] h-[22px] rounded-full relative shadow-inner transition-colors cursor-pointer shrink-0 ${checked ? 'bg-[#d92d78]' : 'bg-gray-200'}`}
+  >
+    <div className={`w-[18px] h-[18px] bg-white rounded-full absolute top-[2px] shadow-sm transition-all ${checked ? 'left-[20px]' : 'left-[2px]'}`} />
+  </div>
+);
+
+const SCHEDULE_OPTIONS = ['Realtime', 'Hourly', 'Daily · 03:00 UTC', 'Weekly · Mon 06:00', 'Monthly · 1st', 'Off'];
+
+// Static UI metadata — taskType maps to backend API
+const SEO_TASKS_META = [
+  {
+    id: 'crawl', taskType: 'crawl',
+    icon: ArrowPathIcon, iconBg: 'bg-pink-50 text-pink-500 border-pink-100',
+    name: 'Site crawl', desc: 'Discover URLs, status codes, redirects, orphan pages.',
+    defaultSchedule: 'Daily · 03:00 UTC',
+    fields: [
+      { key: 'startUrl', label: 'START URL', placeholder: 'https://affooh.com', defaultValue: 'https://affooh.com', half: true },
+      { key: 'maxDepth', label: 'MAX DEPTH', placeholder: '5', defaultValue: '5', half: true },
+    ],
+  },
+  {
+    id: 'meta', taskType: 'on_page',
+    icon: DocumentTextIcon, iconBg: 'bg-blue-50 text-blue-500 border-blue-100',
+    name: 'Meta audit', desc: 'Title, description, canonical, OG and Twitter cards.',
+    defaultSchedule: 'Daily · 03:00 UTC',
+    fields: [
+      { key: 'scope', label: 'SCOPE', placeholder: 'All indexable pages', defaultValue: 'All indexable pages', half: false },
+    ],
+  },
+  {
+    id: 'speed', taskType: 'performance',
+    icon: BoltIcon, iconBg: 'bg-yellow-50 text-yellow-500 border-yellow-100',
+    name: 'Site speed (Core Web Vitals)', desc: 'LCP, INP, CLS for mobile + desktop. Lighthouse run.',
+    defaultSchedule: 'Weekly · Mon 06:00',
+    fields: [
+      { key: 'urls', label: 'URLS', placeholder: 'Top 50 by traffic', defaultValue: 'Top 50 by traffic', half: true },
+      { key: 'device', label: 'DEVICE', placeholder: 'Mobile + Desktop', defaultValue: 'Mobile + Desktop', half: true },
+    ],
+  },
+  {
+    id: 'rank', taskType: 'keywords',
+    icon: ChartBarIcon, iconBg: 'bg-purple-50 text-purple-500 border-purple-100',
+    name: 'Keyword rank tracking', desc: 'Track positions for a keyword set across locations.',
+    defaultSchedule: 'Daily · 03:00 UTC',
+    fields: [
+      { key: 'keywords', label: 'KEYWORDS', placeholder: '124 tracked', defaultValue: '124 tracked', half: true },
+      { key: 'locations', label: 'LOCATIONS', placeholder: 'US, UK, AU', defaultValue: 'US, UK, AU', half: true },
+    ],
+  },
+  {
+    id: 'backlink', taskType: 'backlinks',
+    icon: LinkIcon, iconBg: 'bg-orange-50 text-orange-500 border-orange-100',
+    name: 'Backlink monitoring', desc: 'New/lost referring domains, anchor-text shifts.',
+    defaultSchedule: 'Weekly · Mon 06:00',
+    fields: [
+      { key: 'domain', label: 'DOMAIN', placeholder: 'affooh.com', defaultValue: 'affooh.com', half: false },
+    ],
+  },
+  {
+    id: 'gap', taskType: 'content',
+    icon: MapIcon, iconBg: 'bg-gray-50 text-gray-400 border-gray-200',
+    name: 'Content gap analysis', desc: "Find keywords competitors rank for and you don't.",
+    defaultSchedule: 'Monthly · 1st',
+    fields: [
+      { key: 'competitors', label: 'COMPETITORS', placeholder: 'monday.com, notion.so', defaultValue: 'monday.com, notion.so', half: false },
+    ],
+  },
+  {
+    id: 'broken', taskType: 'broken',
+    icon: ShieldExclamationIcon, iconBg: 'bg-red-50 text-red-500 border-red-100',
+    name: 'Broken-link scan', desc: '4xx/5xx internal links and external dead-ends.',
+    defaultSchedule: 'Weekly · Mon 06:00',
+    fields: [
+      { key: 'scope', label: 'SCOPE', placeholder: 'Internal + External', defaultValue: 'Internal + External', half: false },
+    ],
+  },
+  {
+    id: 'schema', taskType: 'schema',
+    icon: CodeBracketIcon, iconBg: 'bg-gray-50 text-gray-400 border-gray-200',
+    name: 'Schema validation', desc: 'Lint JSON-LD blocks against schema.org spec.',
+    defaultSchedule: 'Off',
+    fields: [
+      { key: 'pageTypes', label: 'PAGE TYPES', placeholder: 'Article, Product, FAQ', defaultValue: 'Article, Product, FAQ', half: false },
+    ],
+  },
+];
+
+const SCHEDULE_LABEL_TO_TYPE = {
+  'Realtime': 'REALTIME',
+  'Hourly': 'HOURLY',
+  'Daily · 03:00 UTC': 'DAILY',
+  'Weekly · Mon 06:00': 'WEEKLY',
+  'Monthly · 1st': 'MONTHLY',
+  'Off': 'OFF',
+};
+const SCHEDULE_TYPE_TO_LABEL = Object.fromEntries(
+  Object.entries(SCHEDULE_LABEL_TO_TYPE).map(([k, v]) => [v, k])
+);
+
+const AutomatedTasksTab = ({ onOpenConfigure }) => {
+  const [taskState, setTaskState] = useState({});
+  const [fieldValues, setFieldValues] = useState({});
+  const [expandedId, setExpandedId] = useState(null);
+  const [runningIds, setRunningIds] = useState({});
+  const [loadingTasks, setLoadingTasks] = useState(true);
+
+  useEffect(() => {
+    getSeoTasks().then(({ tasks }) => {
+      const state = {};
+      const fields = {};
+      SEO_TASKS_META.forEach(meta => {
+        const remote = tasks[meta.taskType] || {};
+        state[meta.id] = {
+          enabled: remote.isEnabled ?? (meta.defaultSchedule !== 'Off'),
+          schedule: SCHEDULE_TYPE_TO_LABEL[remote.scheduleType] || meta.defaultSchedule,
+          totalRuns: remote.totalRuns ?? 0,
+          lastRunAt: remote.lastRunAt || null,
+        };
+        const cfg = remote.config || {};
+        const fv = {};
+        meta.fields.forEach(f => { fv[f.key] = cfg[f.key] || f.defaultValue; });
+        fields[meta.id] = fv;
+      });
+      setTaskState(state);
+      setFieldValues(fields);
+    }).catch(() => {
+      const state = {};
+      const fields = {};
+      SEO_TASKS_META.forEach(meta => {
+        state[meta.id] = {
+          enabled: meta.defaultSchedule !== 'Off',
+          schedule: meta.defaultSchedule,
+          totalRuns: 0,
+          lastRunAt: null,
+        };
+        const fv = {};
+        meta.fields.forEach(f => { fv[f.key] = f.defaultValue; });
+        fields[meta.id] = fv;
+      });
+      setTaskState(state);
+      setFieldValues(fields);
+    }).finally(() => setLoadingTasks(false));
+  }, []);
+
+  const persist = async (meta, patch) => {
+    const current = taskState[meta.id] || {};
+    const merged = { ...current, ...patch };
+    const config = fieldValues[meta.id] || {};
+    const schedType = SCHEDULE_LABEL_TO_TYPE[merged.schedule] || 'OFF';
+    await saveSeoTask(meta.taskType, {
+      isEnabled: merged.enabled,
+      scheduleType: schedType,
+      config,
+    }).catch(() => {});
+  };
+
+  const toggleTask = (meta) => {
+    setTaskState(prev => {
+      const updated = { ...prev[meta.id], enabled: !prev[meta.id].enabled };
+      persist(meta, { enabled: updated.enabled });
+      return { ...prev, [meta.id]: updated };
+    });
+  };
+
+  const setSchedule = (meta, sched) => {
+    setTaskState(prev => {
+      const updated = { ...prev[meta.id], schedule: sched };
+      persist(meta, { schedule: sched });
+      return { ...prev, [meta.id]: updated };
+    });
+  };
+
+  const setField = (taskId, key, value) => {
+    setFieldValues(prev => ({ ...prev, [taskId]: { ...prev[taskId], [key]: value } }));
+  };
+
+  const handleRun = async (meta) => {
+    setRunningIds(prev => ({ ...prev, [meta.id]: true }));
+    try {
+      // Save current config first, then trigger
+      const config = fieldValues[meta.id] || {};
+      const schedType = SCHEDULE_LABEL_TO_TYPE[taskState[meta.id]?.schedule] || 'OFF';
+      await saveSeoTask(meta.taskType, {
+        isEnabled: taskState[meta.id]?.enabled ?? true,
+        scheduleType: schedType,
+        config,
+      });
+      await runSeoTask(meta.taskType);
+      setTaskState(prev => ({
+        ...prev,
+        [meta.id]: { ...prev[meta.id], totalRuns: (prev[meta.id]?.totalRuns || 0) + 1, lastRunAt: new Date().toISOString() },
+      }));
+    } catch (e) {
+      // swallow — user sees no change
+    } finally {
+      setRunningIds(prev => ({ ...prev, [meta.id]: false }));
+    }
+  };
+
+  const enabledCount = SEO_TASKS_META.filter(m => taskState[m.id]?.enabled).length;
+
+  if (loadingTasks) {
+    return <div className="flex-1 flex items-center justify-center text-[13px] text-gray-400">Loading tasks…</div>;
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6 bg-white">
+      {/* Header */}
+      <div className="bg-[#fff0f6] rounded-xl p-4 border border-pink-100 flex items-center justify-between shadow-sm mb-4">
+        <div>
+          <div className="text-[14px] font-bold text-gray-900 mb-0.5">Automated tasks</div>
+          <p className="text-[13px] text-gray-500">
+            Recurring jobs SEO Specialist runs on its own.{' '}
+            <span className="font-medium text-gray-700">{enabledCount} of {SEO_TASKS_META.length} enabled</span>
+            {' · '}model &amp; persona live in{' '}
+            <span className="text-pink-600 underline cursor-pointer hover:text-pink-700" onClick={onOpenConfigure}>advanced settings</span>.
+          </p>
+        </div>
+        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-lg text-[13px] font-medium text-gray-700 hover:bg-gray-50">
+          <PlusIcon className="w-4 h-4" /> Add task
+        </button>
+      </div>
+
+      {/* Task rows */}
+      <div className="space-y-2">
+        {SEO_TASKS_META.map(meta => {
+          const Icon = meta.icon;
+          const isOpen = expandedId === meta.id;
+          const state = taskState[meta.id] || {};
+          const fv = fieldValues[meta.id] || {};
+          const isRunning = runningIds[meta.id];
+          const lastRun = state.lastRunAt
+            ? new Date(state.lastRunAt).toLocaleString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+            : 'never';
+
+          return (
+            <div
+              key={meta.id}
+              className={`bg-white border rounded-xl shadow-sm overflow-hidden transition-all ${state.enabled ? 'border-gray-200' : 'border-gray-100'} ${!state.enabled ? 'opacity-70' : ''}`}
+            >
+              {/* Row header */}
+              <div
+                className="flex items-center gap-4 px-4 py-3.5 cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => setExpandedId(isOpen ? null : meta.id)}
+              >
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center border shrink-0 ${meta.iconBg}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-[13px] font-bold ${state.enabled ? 'text-gray-900' : 'text-gray-500'}`}>{meta.name}</div>
+                  <div className="text-[11px] text-gray-400 truncate">{meta.desc}</div>
+                </div>
+                <div className="text-right shrink-0 mr-2">
+                  <div className="text-[12px] font-medium text-gray-600 flex items-center gap-1 justify-end">
+                    <ArrowPathIcon className="w-3 h-3" /> {state.schedule || meta.defaultSchedule}
+                  </div>
+                  <div className="text-[11px] text-gray-400 mt-0.5">Last run · {lastRun}</div>
+                </div>
+                <Toggle checked={!!state.enabled} onChange={() => toggleTask(meta)} />
+                <ChevronDownIcon className={`w-4 h-4 text-gray-300 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+              </div>
+
+              {/* Expanded panel */}
+              {isOpen && (
+                <div className="border-t border-gray-100 bg-[#fafafa] px-5 py-4 space-y-4">
+                  {/* Config fields */}
+                  <div className={`flex gap-4 ${meta.fields.length === 1 ? '' : 'flex-wrap'}`}>
+                    {meta.fields.map(f => (
+                      <div key={f.key} className={f.half ? 'flex-1 min-w-0' : 'w-full'}>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">{f.label}</label>
+                        <input
+                          type="text"
+                          value={fv[f.key] ?? f.defaultValue}
+                          placeholder={f.placeholder}
+                          onChange={e => setField(meta.id, f.key, e.target.value)}
+                          onBlur={() => persist(meta, {})}
+                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-800 focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Schedule pills */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Schedule</label>
+                    <div className="flex flex-wrap gap-1.5 bg-white border border-gray-200 rounded-lg p-1.5">
+                      {SCHEDULE_OPTIONS.map(opt => (
+                        <button
+                          key={opt}
+                          onClick={() => setSchedule(meta, opt)}
+                          className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${(state.schedule || meta.defaultSchedule) === opt ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Footer */}
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="text-[11px] text-gray-400 flex items-center gap-1 font-medium">
+                      <BoltIcon className="w-3 h-3" /> {state.totalRuns ?? 0} total runs · Output → output panel
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+                        <EllipsisHorizontalIcon className="w-3.5 h-3.5" /> Logs
+                      </button>
+                      <button
+                        disabled={isRunning}
+                        onClick={e => { e.stopPropagation(); handleRun(meta); }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-white bg-gray-900 rounded-lg hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <PlayIcon className="w-3 h-3" /> {isRunning ? 'Running…' : 'Run now'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
 
 const AgentsLayout = () => {
   const [selectedAgent, setSelectedAgent] = useState('seo');
@@ -53,6 +385,7 @@ const AgentsLayout = () => {
   const [seoSchedule, setSeoSchedule] = useState(null);
   const [seoSiteConfig, setSeoSiteConfig] = useState(null);
   const [seoReport, setSeoReport] = useState(null);
+  const [seoReportDetail, setSeoReportDetail] = useState(null);
   const [seoExecutions, setSeoExecutions] = useState([]);
   const [seoLoading, setSeoLoading] = useState(true);
   const [runningAnalysis, setRunningAnalysis] = useState(false);
@@ -73,7 +406,11 @@ const AgentsLayout = () => {
       if (modelRes.status === 'fulfilled') setSeoModelConfig(modelRes.value);
       if (scheduleRes.status === 'fulfilled') setSeoSchedule(scheduleRes.value);
       if (siteRes.status === 'fulfilled') setSeoSiteConfig(siteRes.value);
-      if (reportRes.status === 'fulfilled') setSeoReport(reportRes.value?.report || null);
+      const report = reportRes.status === 'fulfilled' ? (reportRes.value?.report || null) : null;
+      setSeoReport(report);
+      if (report?.id) {
+        getSeoReport(report.id).then(detail => setSeoReportDetail(detail)).catch(() => {});
+      }
       if (execRes.status === 'fulfilled') setSeoExecutions(execRes.value?.executions || []);
     } catch (_) {}
     setSeoLoading(false);
@@ -96,8 +433,8 @@ const AgentsLayout = () => {
     setRunningAnalysis(false);
   };
 
-  const seoEnabled = seoStatus?.agents?.SEO?.isEnabled ?? true;
-  const seoModelName = seoModelConfig?.modelID || 'Not configured';
+  const seoEnabled = seoStatus?.agents?.SEO?.isEnabled ?? false;
+  const seoModelName = seoModelConfig?.config?.modelID || 'Not configured';
 
   const agents = [
     { id: 'ba', name: 'Business Analyst', model: 'GPT-4o', init: 'BA', color: 'bg-blue-600 text-white', sources: 3, tools: 2 },
@@ -202,7 +539,11 @@ const AgentsLayout = () => {
                   {currentAgent.name}
                 </div>
                 <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
-                  <span className="bg-green-50 border border-green-200 text-green-700 px-1.5 py-0 rounded-md font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> running</span>
+                  {currentAgent.id === 'seo'
+                    ? seoEnabled
+                      ? <span className="bg-green-50 border border-green-200 text-green-700 px-1.5 py-0 rounded-md font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> running</span>
+                      : <span className="bg-gray-100 border border-gray-200 text-gray-500 px-1.5 py-0 rounded-md font-medium flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-400"></span> disabled</span>
+                    : null}
                   <span>{currentAgent.model}</span>
                   <span>·</span>
                   <span>{currentAgent.sources} sources</span>
@@ -211,12 +552,28 @@ const AgentsLayout = () => {
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-4 text-sm font-medium text-gray-600">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-600">
               <button className="flex items-center gap-1.5 hover:text-gray-900 bg-white border border-gray-200 shadow-sm px-3 py-1.5 rounded-lg text-[13px]"><ArrowPathIcon className="w-4 h-4" /> New thread</button>
+              {currentAgent.id === 'seo' && (
+                <button
+                  onClick={handleRunAnalysis}
+                  disabled={runningAnalysis}
+                  className="flex items-center gap-1.5 bg-gray-900 text-white px-3 py-1.5 rounded-lg text-[13px] font-semibold hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  <PlayIcon className="w-3.5 h-3.5" />
+                  {runningAnalysis ? 'Running…' : 'Run analysis'}
+                </button>
+              )}
               <button onClick={() => setIsConfigureModalOpen(true)} className="flex items-center gap-1.5 hover:text-gray-900 bg-white border border-gray-200 shadow-sm px-3 py-1.5 rounded-lg text-[13px]"><AdjustmentsHorizontalIcon className="w-4 h-4" /> Configure</button>
             </div>
           </div>
 
+          {runMessage && (
+            <div className={`flex items-center gap-2 text-[12px] px-1 font-medium ${runMessage.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+              {runMessage.type === 'success' ? <CheckCircleIcon className="w-4 h-4 shrink-0" /> : <ExclamationCircleIcon className="w-4 h-4 shrink-0" />}
+              {runMessage.text}
+            </div>
+          )}
           <div className="flex items-center justify-between mt-2 border-b border-gray-100">
             <div className="flex items-center gap-6">
               <div
@@ -282,133 +639,10 @@ const AgentsLayout = () => {
             </div>
           </>
         ) : (
-          <div className="flex-1 overflow-y-auto p-6 space-y-3 bg-white">
-            {/* Configure Tab — SEO Analysis */}
-            <div className="bg-[#fff0f6] rounded-xl p-5 border border-pink-100 flex items-center justify-between shadow-sm mb-6">
-              <div>
-                <div className="text-[14px] font-bold text-gray-900 mb-0.5">SEO Analysis</div>
-                <p className="text-[13px] text-gray-600">
-                  {seoSiteConfig?.siteUrl ? (
-                    <>Analysing <span className="font-medium text-gray-800">{seoSiteConfig.siteUrl}</span> · schedule &amp; model in <span className="text-pink-600 underline cursor-pointer hover:text-pink-700" onClick={() => setIsConfigureModalOpen(true)}>advanced settings</span>.</>
-                  ) : (
-                    <>Configure site URL and model in <span className="text-pink-600 underline cursor-pointer hover:text-pink-700" onClick={() => setIsConfigureModalOpen(true)}>advanced settings</span>.</>
-                  )}
-                </p>
-              </div>
-              <button
-                onClick={handleRunAnalysis}
-                disabled={runningAnalysis}
-                className="bg-gray-900 text-white px-4 py-2 rounded-lg text-[13px] font-medium shadow-sm hover:bg-black flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {runningAnalysis ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <PlayIcon className="w-4 h-4" />}
-                {runningAnalysis ? 'Starting…' : 'Run now'}
-              </button>
-            </div>
-
-            {runMessage && (
-              <div className={`flex items-center gap-2 px-4 py-3 rounded-xl text-[13px] font-medium border ${runMessage.type === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-                {runMessage.type === 'success' ? <CheckCircleIcon className="w-4 h-4 shrink-0" /> : <ExclamationCircleIcon className="w-4 h-4 shrink-0" />}
-                {runMessage.text}
-              </div>
-            )}
-
-            {/* Schedule card */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-              <div className="p-4 flex items-center justify-between border-b border-gray-100">
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center text-pink-500 border border-pink-100">
-                    <ArrowPathIcon className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="font-bold text-[14px] text-gray-900">Scheduled analysis</div>
-                    <div className="text-[13px] text-gray-500 mt-0.5">Full SEO crawl, PageSpeed, GSC data, and AI report.</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    {seoSchedule ? (
-                      <>
-                        <div className="text-[13px] font-semibold text-gray-600 flex items-center gap-1">
-                          <ArrowPathIcon className="w-3.5 h-3.5" />
-                          {seoSchedule.frequency || 'Manual'}
-                        </div>
-                        {seoSchedule.nextRunAt && (
-                          <div className="text-[11px] text-gray-400 mt-0.5">
-                            Next · {new Date(seoSchedule.nextRunAt).toLocaleString()}
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="text-[13px] text-gray-400">Not scheduled</div>
-                    )}
-                  </div>
-                  <div className={`w-9 h-5 rounded-full relative shadow-inner ${seoEnabled ? 'bg-[#d92d78]' : 'bg-gray-200 border border-gray-300'}`}>
-                    <div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 shadow-sm transition-all ${seoEnabled ? 'right-0.5' : 'left-0.5'}`}></div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="px-5 py-4 bg-white">
-                <div className="flex gap-6">
-                  <div className="flex-1">
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Site URL</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={seoSiteConfig?.siteUrl || ''}
-                      placeholder="Not configured"
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-800 font-medium bg-gray-50 focus:outline-none"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">AI Model</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={seoModelName}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-[13px] text-gray-800 font-medium bg-gray-50 focus:outline-none"
-                    />
-                  </div>
-                </div>
-                <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
-                  <div className="text-[12px] text-gray-400 flex items-center gap-1.5 font-medium">
-                    <BoltIcon className="w-3.5 h-3.5" /> {seoExecutions.length} total runs · Output → report panel
-                  </div>
-                  <button
-                    onClick={() => setIsConfigureModalOpen(true)}
-                    className="text-[13px] text-pink-600 font-medium hover:underline"
-                  >
-                    Edit settings →
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Past executions */}
-            {seoExecutions.length > 0 && (
-              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100 text-[12px] font-bold text-gray-500 uppercase tracking-wider">
-                  Recent Runs
-                </div>
-                {seoExecutions.slice(0, 5).map((exec, i) => (
-                  <div key={exec.executionId || i} className="px-4 py-3 flex items-center justify-between border-b border-gray-50 last:border-0 hover:bg-gray-50 cursor-pointer">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${exec.status === 'SUCCEEDED' ? 'bg-green-500' : exec.status === 'RUNNING' ? 'bg-blue-500 animate-pulse' : exec.status === 'FAILED' ? 'bg-red-500' : 'bg-gray-400'}`}></div>
-                      <div>
-                        <div className="text-[13px] font-medium text-gray-800">{exec.status}</div>
-                        <div className="text-[11px] text-gray-400">{exec.startedAt ? new Date(exec.startedAt).toLocaleString() : '—'}</div>
-                      </div>
-                    </div>
-                    {exec.healthScore != null && (
-                      <div className="text-[13px] font-bold text-gray-700">Score: {exec.healthScore}</div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="h-4"></div>
-          </div>
+          <AutomatedTasksTab
+            seoEnabled={seoEnabled}
+            onOpenConfigure={() => setIsConfigureModalOpen(true)}
+          />
         )}
       </div>
 
@@ -450,38 +684,78 @@ const AgentsLayout = () => {
                 <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading report…
               </div>
             ) : seoReport ? (
-              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 min-h-full max-w-full overflow-hidden">
-                <div className="flex items-center gap-3 text-xs text-gray-500 mb-6 font-medium">
-                  {seoReport.healthScore != null && (
-                    <span className={`px-2.5 py-0.5 rounded-full font-bold text-white text-[11px] ${seoReport.healthScore >= 70 ? 'bg-green-500' : seoReport.healthScore >= 40 ? 'bg-orange-400' : 'bg-red-500'}`}>
-                      Score {seoReport.healthScore}
-                    </span>
-                  )}
-                  {seoReport.generatedAt && (
-                    <span>Generated {new Date(seoReport.generatedAt).toLocaleString()}</span>
-                  )}
-                  {seoReport.siteUrl && (
-                    <span className="text-gray-400">{seoReport.siteUrl}</span>
-                  )}
+              <div className="space-y-4">
+                {/* Header row */}
+                <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    {seoReport.healthScore != null && (
+                      <span className={`px-3 py-1 rounded-full font-bold text-white text-[13px] ${seoReport.healthScore >= 70 ? 'bg-green-500' : seoReport.healthScore >= 40 ? 'bg-orange-400' : 'bg-red-500'}`}>
+                        Score {seoReport.healthScore}
+                      </span>
+                    )}
+                    <div className="text-[15px] font-bold text-gray-900">SEO Health Report</div>
+                  </div>
+                  <div className="text-[12px] text-gray-400 font-medium">
+                    {seoReport.generatedAt ? `Generated ${new Date(seoReport.generatedAt).toLocaleString()}` : ''}
+                    {seoReport.triggerType ? ` · ${seoReport.triggerType.toLowerCase()}` : ''}
+                  </div>
                 </div>
 
-                <div className="text-2xl font-bold text-gray-900 mb-4 tracking-tight leading-snug">
-                  SEO Health Report
+                {/* Stat cards */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-center">
+                    <div className="text-2xl font-bold text-gray-900">{seoReport.totalPagesCrawled ?? '—'}</div>
+                    <div className="text-[11px] text-gray-500 mt-1 font-medium">Pages crawled</div>
+                  </div>
+                  <div className="bg-white border border-rose-100 rounded-xl p-4 shadow-sm text-center">
+                    <div className="text-2xl font-bold text-rose-600">{seoReport.newIssuesCount ?? '—'}</div>
+                    <div className="text-[11px] text-gray-500 mt-1 font-medium">New issues</div>
+                  </div>
+                  <div className="bg-white border border-green-100 rounded-xl p-4 shadow-sm text-center">
+                    <div className="text-2xl font-bold text-green-600">{seoReport.totalIssuesResolved ?? '—'}</div>
+                    <div className="text-[11px] text-gray-500 mt-1 font-medium">Fixed</div>
+                  </div>
                 </div>
 
-                {seoReport.executiveSummary && (
-                  <div className="mb-6">
-                    <div className="text-xs font-bold text-gray-500 tracking-wider mb-2 uppercase">Summary</div>
-                    <p className="text-sm text-gray-800 leading-relaxed">{seoReport.executiveSummary}</p>
+                {/* Issue breakdown */}
+                {seoReport.issueBreakdown && (
+                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+                    <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-3">Issue breakdown</div>
+                    <div className="flex gap-4">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+                        <span className="text-[13px] font-bold text-gray-900">{seoReport.issueBreakdown.CRITICAL}</span>
+                        <span className="text-[12px] text-gray-500">Critical</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-orange-400 shrink-0"></span>
+                        <span className="text-[13px] font-bold text-gray-900">{seoReport.issueBreakdown.WARNING}</span>
+                        <span className="text-[12px] text-gray-500">Warning</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
+                        <span className="text-[13px] font-bold text-gray-900">{seoReport.issueBreakdown.INFO}</span>
+                        <span className="text-[12px] text-gray-500">Info</span>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                {seoReport.prioritizedIssues?.length > 0 && (
-                  <div className="mb-6">
-                    <div className="text-xs font-bold text-gray-500 tracking-wider mb-3 uppercase">Prioritized Issues</div>
-                    <div className="space-y-3">
-                      {seoReport.prioritizedIssues.map((issue, i) => (
-                        <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                {/* AI summary — from reportSummaryJSON */}
+                {seoReport.reportSummaryJSON?.executiveSummary && (
+                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+                    <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-2">AI Summary</div>
+                    <p className="text-[13px] text-gray-800 leading-relaxed">{seoReport.reportSummaryJSON.executiveSummary}</p>
+                  </div>
+                )}
+
+                {/* Prioritized issues from AI */}
+                {seoReport.reportSummaryJSON?.prioritizedIssues?.length > 0 && (
+                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+                    <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-3">Prioritized Issues</div>
+                    <div className="space-y-2">
+                      {seoReport.reportSummaryJSON.prioritizedIssues.map((issue, i) => (
+                        <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
                           <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
                             issue.priority === 'high' || issue.priority === 'critical'
                               ? 'bg-rose-100 text-rose-700 border border-rose-200'
@@ -499,11 +773,12 @@ const AgentsLayout = () => {
                   </div>
                 )}
 
-                {seoReport.recommendations?.length > 0 && (
-                  <div>
-                    <div className="text-xs font-bold text-gray-500 tracking-wider mb-3 uppercase">Recommendations</div>
-                    <ol className="list-decimal pl-4 space-y-2 text-sm text-gray-800 marker:text-gray-500">
-                      {seoReport.recommendations.map((rec, i) => (
+                {/* Recommendations */}
+                {seoReport.reportSummaryJSON?.recommendations?.length > 0 && (
+                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+                    <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-3">Recommendations</div>
+                    <ol className="list-decimal pl-4 space-y-2 text-[13px] text-gray-800 marker:text-gray-500">
+                      {seoReport.reportSummaryJSON.recommendations.map((rec, i) => (
                         <li key={i}>{typeof rec === 'string' ? rec : rec.text || rec.recommendation}</li>
                       ))}
                     </ol>
@@ -516,21 +791,62 @@ const AgentsLayout = () => {
                 <div className="text-[14px] font-semibold text-gray-500 mb-1">No report yet</div>
                 <div className="text-[13px] text-gray-400 mb-4">Run an analysis to generate your first SEO report.</div>
                 <button
-                  onClick={() => setActiveTab('configure')}
-                  className="bg-gray-900 text-white px-4 py-2 rounded-lg text-[13px] font-medium hover:bg-black flex items-center gap-2"
+                  onClick={handleRunAnalysis}
+                  disabled={runningAnalysis}
+                  className="bg-gray-900 text-white px-4 py-2 rounded-lg text-[13px] font-medium hover:bg-black flex items-center gap-2 disabled:opacity-50"
                 >
-                  <PlayIcon className="w-3.5 h-3.5" /> Go to Configure
+                  <PlayIcon className="w-3.5 h-3.5" /> {runningAnalysis ? 'Running…' : 'Run analysis'}
                 </button>
               </div>
             )
           )}
 
           {selectedOutputTab === 'tasks' && (
-            <div className="flex flex-col items-center justify-center h-64 text-center">
-              <ClipboardDocumentCheckIcon className="w-12 h-12 text-gray-200 mb-4" />
-              <div className="text-[14px] font-semibold text-gray-500 mb-1">No tasks yet</div>
-              <div className="text-[13px] text-gray-400">Tasks extracted from the SEO report will appear here.</div>
-            </div>
+            seoLoading ? (
+              <div className="flex items-center justify-center h-48 text-gray-400 text-[13px]">
+                <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading…
+              </div>
+            ) : seoReportDetail?.issues?.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-[11px] font-bold text-gray-400 tracking-wider uppercase px-1 mb-3">
+                  {seoReportDetail.issues.length} issues · auto-created as Affooh tasks
+                </div>
+                {seoReportDetail.issues.map((issue) => (
+                  <div key={issue.id} className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm flex items-start gap-3">
+                    <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
+                      issue.severity === 'CRITICAL'
+                        ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                        : issue.severity === 'WARNING'
+                        ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                        : 'bg-blue-50 text-blue-600 border border-blue-100'
+                    }`}>{issue.severity}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13px] font-semibold text-gray-900 capitalize">
+                        {issue.issueType?.replace(/_/g, ' ')}
+                      </div>
+                      <div className="text-[11px] text-gray-400 truncate mt-0.5">{issue.pageURL}</div>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      {issue.affooTaskID ? (
+                        issue.taskClosedAt
+                          ? <span className="text-[11px] font-medium text-green-600 flex items-center gap-1"><CheckCircleIcon className="w-3.5 h-3.5" /> Fixed</span>
+                          : <span className="text-[11px] font-medium text-gray-500">Task #{issue.affooTaskID}</span>
+                      ) : (
+                        issue.severity === 'INFO'
+                          ? <span className="text-[11px] text-gray-400">—</span>
+                          : <span className="text-[11px] text-orange-500 font-medium">No task</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <ClipboardDocumentCheckIcon className="w-12 h-12 text-gray-200 mb-4" />
+                <div className="text-[14px] font-semibold text-gray-500 mb-1">No tasks yet</div>
+                <div className="text-[13px] text-gray-400">Tasks extracted from the SEO report will appear here.</div>
+              </div>
+            )
           )}
 
           {selectedOutputTab === 'code' && (
@@ -647,12 +963,13 @@ const AgentsLayout = () => {
                   <div key={exec.executionId || i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between group hover:border-pink-300 transition-all cursor-pointer">
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[10px] font-bold border ${
-                        exec.status === 'SUCCEEDED' ? 'bg-green-50 text-green-700 border-green-100' :
+                        exec.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-100' :
                         exec.status === 'FAILED' ? 'bg-red-50 text-red-600 border-red-100' :
+                        exec.status === 'PARTIAL' ? 'bg-orange-50 text-orange-600 border-orange-100' :
                         exec.status === 'RUNNING' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                         'bg-gray-50 text-gray-500 border-gray-200'
                       }`}>
-                        {exec.status === 'SUCCEEDED' ? 'DONE' : exec.status === 'FAILED' ? 'FAIL' : exec.status === 'RUNNING' ? 'RUN' : 'PEND'}
+                        {exec.status === 'COMPLETED' ? 'DONE' : exec.status === 'FAILED' ? 'FAIL' : exec.status === 'PARTIAL' ? 'PART' : exec.status === 'RUNNING' ? 'RUN' : 'PEND'}
                       </div>
                       <div>
                         <div className="text-[14px] font-bold text-gray-900 group-hover:text-[#d92d78] transition-colors">
@@ -665,7 +982,7 @@ const AgentsLayout = () => {
                         </div>
                       </div>
                     </div>
-                    <div className={`w-2 h-2 rounded-full shrink-0 ${exec.status === 'SUCCEEDED' ? 'bg-green-500' : exec.status === 'RUNNING' ? 'bg-blue-500 animate-pulse' : exec.status === 'FAILED' ? 'bg-red-500' : 'bg-gray-400'}`}></div>
+                    <div className={`w-2 h-2 rounded-full shrink-0 ${exec.status === 'COMPLETED' ? 'bg-green-500' : exec.status === 'RUNNING' ? 'bg-blue-500 animate-pulse' : exec.status === 'FAILED' ? 'bg-red-500' : exec.status === 'PARTIAL' ? 'bg-orange-400' : 'bg-gray-400'}`}></div>
                   </div>
                 ))
               )}
