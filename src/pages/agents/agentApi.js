@@ -197,6 +197,13 @@ export async function getSeoReportMap(reportId) {
   return data;
 }
 
+export async function pushIssuesToAffooh(payload) {
+  const { data } = await axios.post(`${BASE}/agents/seo/issues/push-tasks`, payload, {
+    headers: headers(),
+  });
+  return data;
+}
+
 // ─── GSC OAuth ───────────────────────────────────────────────────────────────
 
 export async function getGSCAuthURL() {

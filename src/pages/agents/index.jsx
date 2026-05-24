@@ -42,7 +42,17 @@ import {
   getSeoTasks,
   saveSeoTask,
   runSeoTask,
+  getCredentials,
+  saveCredential,
+  testCredential,
+  deleteCredential,
+  getGSCAuthURL,
+  disconnectGSC,
+  getGSCProperties,
+  saveGSCProperty,
+  pushIssuesToAffooh,
 } from './agentApi';
+import axios from 'axios';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   MagnifyingGlassIcon,
@@ -69,6 +79,8 @@ import {
   SparklesIcon,
   CheckCircleIcon,
   ExclamationCircleIcon,
+  EyeIcon,
+  EyeSlashIcon,
 } from '@heroicons/react/24/outline';
 import { PlayIcon } from '@heroicons/react/24/solid';
 import { useHistory } from 'react-router-dom';
@@ -82,99 +94,6 @@ const Toggle = ({ checked, onChange }) => (
   >
     <div className={`w-[18px] h-[18px] bg-white rounded-full absolute top-[2px] shadow-sm transition-all ${checked ? 'left-[20px]' : 'left-[2px]'}`} />
   </div>
-);
-
-const SCHEDULE_OPTIONS = ['Realtime', 'Hourly', 'Daily · 03:00 UTC', 'Weekly · Mon 06:00', 'Monthly · 1st', 'Off'];
-
-// Static UI metadata — taskType maps to backend API
-const SEO_TASKS_META = [
-  {
-    id: 'crawl', taskType: 'crawl',
-    icon: ArrowPathIcon, iconBg: 'bg-pink-50 text-pink-500 border-pink-100',
-    name: 'Site crawl', desc: 'Discover URLs, status codes, redirects, orphan pages.',
-    defaultSchedule: 'Daily · 03:00 UTC',
-    fields: [
-      { key: 'startUrl', label: 'START URL', placeholder: 'https://affooh.com', defaultValue: 'https://affooh.com', half: true },
-      { key: 'maxDepth', label: 'MAX DEPTH', placeholder: '5', defaultValue: '5', half: true },
-    ],
-  },
-  {
-    id: 'meta', taskType: 'on_page',
-    icon: DocumentTextIcon, iconBg: 'bg-blue-50 text-blue-500 border-blue-100',
-    name: 'Meta audit', desc: 'Title, description, canonical, OG and Twitter cards.',
-    defaultSchedule: 'Daily · 03:00 UTC',
-    fields: [
-      { key: 'scope', label: 'SCOPE', placeholder: 'All indexable pages', defaultValue: 'All indexable pages', half: false },
-    ],
-  },
-  {
-    id: 'speed', taskType: 'performance',
-    icon: BoltIcon, iconBg: 'bg-yellow-50 text-yellow-500 border-yellow-100',
-    name: 'Site speed (Core Web Vitals)', desc: 'LCP, INP, CLS for mobile + desktop. Lighthouse run.',
-    defaultSchedule: 'Weekly · Mon 06:00',
-    fields: [
-      { key: 'urls', label: 'URLS', placeholder: 'Top 50 by traffic', defaultValue: 'Top 50 by traffic', half: true },
-      { key: 'device', label: 'DEVICE', placeholder: 'Mobile + Desktop', defaultValue: 'Mobile + Desktop', half: true },
-    ],
-  },
-  {
-    id: 'rank', taskType: 'keywords',
-    icon: ChartBarIcon, iconBg: 'bg-purple-50 text-purple-500 border-purple-100',
-    name: 'Keyword rank tracking', desc: 'Track positions for a keyword set across locations.',
-    defaultSchedule: 'Daily · 03:00 UTC',
-    fields: [
-      { key: 'keywords', label: 'KEYWORDS', placeholder: '124 tracked', defaultValue: '124 tracked', half: true },
-      { key: 'locations', label: 'LOCATIONS', placeholder: 'US, UK, AU', defaultValue: 'US, UK, AU', half: true },
-    ],
-  },
-  {
-    id: 'backlink', taskType: 'backlinks',
-    icon: LinkIcon, iconBg: 'bg-orange-50 text-orange-500 border-orange-100',
-    name: 'Backlink monitoring', desc: 'New/lost referring domains, anchor-text shifts.',
-    defaultSchedule: 'Weekly · Mon 06:00',
-    fields: [
-      { key: 'domain', label: 'DOMAIN', placeholder: 'affooh.com', defaultValue: 'affooh.com', half: false },
-    ],
-  },
-  {
-    id: 'gap', taskType: 'content',
-    icon: MapIcon, iconBg: 'bg-gray-50 text-gray-400 border-gray-200',
-    name: 'Content gap analysis', desc: "Find keywords competitors rank for and you don't.",
-    defaultSchedule: 'Monthly · 1st',
-    fields: [
-      { key: 'competitors', label: 'COMPETITORS', placeholder: 'monday.com, notion.so', defaultValue: 'monday.com, notion.so', half: false },
-    ],
-  },
-  {
-    id: 'broken', taskType: 'broken',
-    icon: ShieldExclamationIcon, iconBg: 'bg-red-50 text-red-500 border-red-100',
-    name: 'Broken-link scan', desc: '4xx/5xx internal links and external dead-ends.',
-    defaultSchedule: 'Weekly · Mon 06:00',
-    fields: [
-      { key: 'scope', label: 'SCOPE', placeholder: 'Internal + External', defaultValue: 'Internal + External', half: false },
-    ],
-  },
-  {
-    id: 'schema', taskType: 'schema',
-    icon: CodeBracketIcon, iconBg: 'bg-gray-50 text-gray-400 border-gray-200',
-    name: 'Schema validation', desc: 'Lint JSON-LD blocks against schema.org spec.',
-    defaultSchedule: 'Off',
-    fields: [
-      { key: 'pageTypes', label: 'PAGE TYPES', placeholder: 'Article, Product, FAQ', defaultValue: 'Article, Product, FAQ', half: false },
-    ],
-  },
-];
-
-const SCHEDULE_LABEL_TO_TYPE = {
-  'Realtime': 'REALTIME',
-  'Hourly': 'HOURLY',
-  'Daily · 03:00 UTC': 'DAILY',
-  'Weekly · Mon 06:00': 'WEEKLY',
-  'Monthly · 1st': 'MONTHLY',
-  'Off': 'OFF',
-};
-const SCHEDULE_TYPE_TO_LABEL = Object.fromEntries(
-  Object.entries(SCHEDULE_LABEL_TO_TYPE).map(([k, v]) => [v, k])
 );
 
 // ─── Site Info + Schedule Section ─────────────────────────────────────────────
@@ -494,231 +413,507 @@ const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedul
   );
 };
 
-const AutomatedTasksTab = ({ onOpenConfigure }) => {
-  const [taskState, setTaskState] = useState({});
-  const [fieldValues, setFieldValues] = useState({});
-  const [expandedId, setExpandedId] = useState(null);
-  const [runningIds, setRunningIds] = useState({});
-  const [loadingTasks, setLoadingTasks] = useState(true);
+const ApiConfigSection = () => {
+  const [loading, setLoading] = useState(true);
+  const [creds, setCreds] = useState({});
 
-  useEffect(() => {
-    getSeoTasks().then(({ tasks }) => {
-      const state = {};
-      const fields = {};
-      SEO_TASKS_META.forEach(meta => {
-        const remote = tasks[meta.taskType] || {};
-        state[meta.id] = {
-          enabled: remote.isEnabled ?? (meta.defaultSchedule !== 'Off'),
-          schedule: SCHEDULE_TYPE_TO_LABEL[remote.scheduleType] || meta.defaultSchedule,
-          totalRuns: remote.totalRuns ?? 0,
-          lastRunAt: remote.lastRunAt || null,
-        };
-        const cfg = remote.config || {};
-        const fv = {};
-        meta.fields.forEach(f => { fv[f.key] = cfg[f.key] || f.defaultValue; });
-        fields[meta.id] = fv;
-      });
-      setTaskState(state);
-      setFieldValues(fields);
-    }).catch(() => {
-      const state = {};
-      const fields = {};
-      SEO_TASKS_META.forEach(meta => {
-        state[meta.id] = {
-          enabled: meta.defaultSchedule !== 'Off',
-          schedule: meta.defaultSchedule,
-          totalRuns: 0,
-          lastRunAt: null,
-        };
-        const fv = {};
-        meta.fields.forEach(f => { fv[f.key] = f.defaultValue; });
-        fields[meta.id] = fv;
-      });
-      setTaskState(state);
-      setFieldValues(fields);
-    }).finally(() => setLoadingTasks(false));
+  // DataForSEO
+  const [dfsLogin, setDfsLogin] = useState('');
+  const [dfsPass, setDfsPass] = useState('');
+  const [showDfsPass, setShowDfsPass] = useState(false);
+  const [dfsSaving, setDfsSaving] = useState(false);
+  const [dfsTesting, setDfsTesting] = useState(false);
+  const [dfsFeedback, setDfsFeedback] = useState(null);
+
+  // GSC
+  const [gscProperties, setGscProperties] = useState(null);
+  const [gscSelectedProperty, setGscSelectedProperty] = useState('');
+
+  // PageSpeed
+  const [psKey, setPsKey] = useState('');
+  const [showPsKey, setShowPsKey] = useState(false);
+  const [psSaving, setPsSaving] = useState(false);
+  const [psTesting, setPsTesting] = useState(false);
+  const [psFeedback, setPsFeedback] = useState(null);
+
+  const loadGSCProperties = useCallback(async () => {
+    try {
+      const data = await getGSCProperties();
+      setGscProperties(data.properties || []);
+      setGscSelectedProperty(data.selectedProperty || '');
+    } catch (_) {
+      setGscProperties([]);
+    }
   }, []);
 
-  const persist = async (meta, patch) => {
-    const current = taskState[meta.id] || {};
-    const merged = { ...current, ...patch };
-    const config = fieldValues[meta.id] || {};
-    const schedType = SCHEDULE_LABEL_TO_TYPE[merged.schedule] || 'OFF';
-    await saveSeoTask(meta.taskType, {
-      isEnabled: merged.enabled,
-      scheduleType: schedType,
-      config,
-    }).catch(() => {
-      toast.error(`Failed to save ${meta.name} settings`);
-    });
-  };
+  useEffect(() => {
+    getCredentials()
+      .then(data => {
+        const raw = data.credentials || {};
+        setCreds(raw);
+        if (raw['GSC']?.isConnected) loadGSCProperties();
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [loadGSCProperties]);
 
-  const toggleTask = (meta) => {
-    setTaskState(prev => {
-      const updated = { ...prev[meta.id], enabled: !prev[meta.id].enabled };
-      persist(meta, { enabled: updated.enabled });
-      return { ...prev, [meta.id]: updated };
-    });
-  };
-
-  const setSchedule = (meta, sched) => {
-    setTaskState(prev => {
-      const updated = { ...prev[meta.id], schedule: sched };
-      persist(meta, { schedule: sched });
-      return { ...prev, [meta.id]: updated };
-    });
-  };
-
-  const setField = (taskId, key, value) => {
-    setFieldValues(prev => ({ ...prev, [taskId]: { ...prev[taskId], [key]: value } }));
-  };
-
-  const handleRun = async (meta) => {
-    setRunningIds(prev => ({ ...prev, [meta.id]: true }));
+  const handleDfsSave = async () => {
+    if (!dfsLogin || !dfsPass) return;
+    setDfsSaving(true);
+    setDfsFeedback(null);
     try {
-      const config = fieldValues[meta.id] || {};
-      const schedType = SCHEDULE_LABEL_TO_TYPE[taskState[meta.id]?.schedule] || 'OFF';
-      await saveSeoTask(meta.taskType, {
-        isEnabled: taskState[meta.id]?.enabled ?? true,
-        scheduleType: schedType,
-        config,
-      });
-      await runSeoTask(meta.taskType);
-      setTaskState(prev => ({
-        ...prev,
-        [meta.id]: { ...prev[meta.id], totalRuns: (prev[meta.id]?.totalRuns || 0) + 1, lastRunAt: new Date().toISOString() },
-      }));
-      toast.success(`${meta.name} started`);
+      await saveCredential('dataforseo', { login: dfsLogin, password: dfsPass });
+      setCreds(p => ({ ...p, DATAFORSEO: { isConnected: true } }));
+      setDfsLogin('');
+      setDfsPass('');
+      setDfsFeedback({ ok: true, message: 'Saved' });
     } catch (e) {
-      toast.error(`Failed to run ${meta.name}`);
+      setDfsFeedback({ ok: false, message: e?.response?.data?.error || 'Save failed' });
     } finally {
-      setRunningIds(prev => ({ ...prev, [meta.id]: false }));
+      setDfsSaving(false);
     }
   };
 
-  const enabledCount = SEO_TASKS_META.filter(m => taskState[m.id]?.enabled).length;
+  const handleDfsTest = async () => {
+    setDfsTesting(true);
+    setDfsFeedback(null);
+    try {
+      const r = await testCredential('dataforseo');
+      setDfsFeedback({ ok: r.connected, message: r.connected ? 'Connected' : (r.error || 'Test failed') });
+    } catch (e) {
+      setDfsFeedback({ ok: false, message: 'Test failed' });
+    } finally {
+      setDfsTesting(false);
+    }
+  };
 
-  if (loadingTasks) {
-    return <div className="flex-1 flex items-center justify-center text-[13px] text-gray-400">Loading tasks…</div>;
+  const handleDfsRemove = async () => {
+    await deleteCredential('dataforseo').catch(() => {});
+    setCreds(p => ({ ...p, DATAFORSEO: { isConnected: false } }));
+    setDfsFeedback(null);
+  };
+
+  const handleGSCConnect = async () => {
+    try {
+      const { authURL } = await getGSCAuthURL();
+      const popup = window.open(authURL, 'gsc-oauth', 'width=600,height=700');
+      if (!popup) { window.open(authURL, '_blank'); return; }
+      const timer = setInterval(async () => {
+        if (popup.closed) {
+          clearInterval(timer);
+          const data = await getCredentials().catch(() => null);
+          if (data?.credentials?.GSC?.isConnected) {
+            setCreds(p => ({ ...p, GSC: { isConnected: true } }));
+            loadGSCProperties();
+          }
+        }
+      }, 600);
+    } catch (_) {}
+  };
+
+  const handleGSCDisconnect = async () => {
+    if (!window.confirm('Disconnect Google Search Console?')) return;
+    await disconnectGSC().catch(() => {});
+    setCreds(p => ({ ...p, GSC: { isConnected: false } }));
+    setGscProperties(null);
+    setGscSelectedProperty('');
+  };
+
+  const handleGSCPropertyChange = async (property) => {
+    setGscSelectedProperty(property);
+    saveGSCProperty(property).catch(() => {});
+  };
+
+  const handlePsSave = async () => {
+    if (!psKey) return;
+    setPsSaving(true);
+    setPsFeedback(null);
+    try {
+      await saveCredential('pagespeed', { apiKey: psKey });
+      setCreds(p => ({ ...p, PAGESPEED: { isConnected: true } }));
+      setPsKey('');
+      setPsFeedback({ ok: true, message: 'Saved' });
+    } catch (e) {
+      setPsFeedback({ ok: false, message: e?.response?.data?.error || 'Save failed' });
+    } finally {
+      setPsSaving(false);
+    }
+  };
+
+  const handlePsTest = async () => {
+    setPsTesting(true);
+    setPsFeedback(null);
+    try {
+      const r = await testCredential('pagespeed');
+      setPsFeedback({ ok: r.connected, message: r.connected ? 'Connected' : (r.error || 'Test failed') });
+    } catch (e) {
+      setPsFeedback({ ok: false, message: 'Test failed' });
+    } finally {
+      setPsTesting(false);
+    }
+  };
+
+  const handlePsRemove = async () => {
+    await deleteCredential('pagespeed').catch(() => {});
+    setCreds(p => ({ ...p, PAGESPEED: { isConnected: false } }));
+    setPsFeedback(null);
+  };
+
+  const dfsConnected = !!creds['DATAFORSEO']?.isConnected;
+  const gscConnected = !!creds['GSC']?.isConnected;
+  const psConnected = !!creds['PAGESPEED']?.isConnected;
+
+  if (loading) {
+    return (
+      <div className="px-5 pt-5 pb-4 flex items-center gap-2 text-[13px] text-gray-400">
+        <ArrowPathIcon className="w-4 h-4 animate-spin" /> Loading API configurations…
+      </div>
+    );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 bg-white">
-      {/* Header */}
-      <div className="bg-[#fff0f6] rounded-xl p-4 border border-pink-100 flex items-center justify-between shadow-sm mb-4">
-        <div>
-          <div className="text-[14px] font-bold text-gray-900 mb-0.5">Automated tasks</div>
-          <p className="text-[13px] text-gray-500">
-            Recurring jobs SEO Specialist runs on its own.{' '}
-            <span className="font-medium text-gray-700">{enabledCount} of {SEO_TASKS_META.length} enabled</span>
-            {' · '}model &amp; persona live in{' '}
-            <span className="text-pink-600 underline cursor-pointer hover:text-pink-700" onClick={onOpenConfigure}>advanced settings</span>.
-          </p>
-        </div>
-        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 shadow-sm rounded-lg text-[13px] font-medium text-gray-700 hover:bg-gray-50">
-          <PlusIcon className="w-4 h-4" /> Add task
-        </button>
+    <div className="px-5 pt-5 pb-4">
+      <div className="mb-4">
+        <div className="text-[13px] font-bold text-gray-900">API Configurations</div>
+        <div className="text-[11px] text-gray-400 mt-0.5">Connect the data sources this agent calls during analysis</div>
       </div>
 
-      {/* Task rows */}
-      <div className="space-y-2">
-        {SEO_TASKS_META.map(meta => {
-          const Icon = meta.icon;
-          const isOpen = expandedId === meta.id;
-          const state = taskState[meta.id] || {};
-          const fv = fieldValues[meta.id] || {};
-          const isRunning = runningIds[meta.id];
-          const lastRun = state.lastRunAt
-            ? new Date(state.lastRunAt).toLocaleString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-            : 'never';
-
-          return (
-            <div
-              key={meta.id}
-              className={`bg-white border rounded-xl shadow-sm overflow-hidden transition-all ${state.enabled ? 'border-gray-200' : 'border-gray-100'} ${!state.enabled ? 'opacity-70' : ''}`}
-            >
-              {/* Row header */}
-              <div
-                className="flex items-center gap-4 px-4 py-3.5 cursor-pointer hover:bg-gray-50 transition-colors"
-                onClick={() => setExpandedId(isOpen ? null : meta.id)}
-              >
-                <div className={`w-9 h-9 rounded-full flex items-center justify-center border shrink-0 ${meta.iconBg}`}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className={`text-[13px] font-bold ${state.enabled ? 'text-gray-900' : 'text-gray-500'}`}>{meta.name}</div>
-                  <div className="text-[11px] text-gray-400 truncate">{meta.desc}</div>
-                </div>
-                <div className="text-right shrink-0 mr-2">
-                  <div className="text-[12px] font-medium text-gray-600 flex items-center gap-1 justify-end">
-                    <ArrowPathIcon className="w-3 h-3" /> {state.schedule || meta.defaultSchedule}
-                  </div>
-                  <div className="text-[11px] text-gray-400 mt-0.5">Last run · {lastRun}</div>
-                </div>
-                <Toggle checked={!!state.enabled} onChange={() => toggleTask(meta)} />
-                <ChevronDownIcon className={`w-4 h-4 text-gray-300 shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
-              </div>
-
-              {/* Expanded panel */}
-              {isOpen && (
-                <div className="border-t border-gray-100 bg-[#fafafa] px-5 py-4 space-y-4">
-                  {/* Config fields */}
-                  <div className={`flex gap-4 ${meta.fields.length === 1 ? '' : 'flex-wrap'}`}>
-                    {meta.fields.map(f => (
-                      <div key={f.key} className={f.half ? 'flex-1 min-w-0' : 'w-full'}>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">{f.label}</label>
-                        <input
-                          type="text"
-                          value={fv[f.key] ?? f.defaultValue}
-                          placeholder={f.placeholder}
-                          onChange={e => setField(meta.id, f.key, e.target.value)}
-                          onBlur={() => persist(meta, {})}
-                          className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-800 focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
-                        />
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Schedule pills */}
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Schedule</label>
-                    <div className="flex flex-wrap gap-1.5 bg-white border border-gray-200 rounded-lg p-1.5">
-                      {SCHEDULE_OPTIONS.map(opt => (
-                        <button
-                          key={opt}
-                          onClick={() => setSchedule(meta, opt)}
-                          className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors ${(state.schedule || meta.defaultSchedule) === opt ? 'bg-gray-900 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Footer */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="text-[11px] text-gray-400 flex items-center gap-1 font-medium">
-                      <BoltIcon className="w-3 h-3" /> {state.totalRuns ?? 0} total runs · Output → output panel
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button className="flex items-center gap-1 px-3 py-1.5 text-[12px] font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
-                        <EllipsisHorizontalIcon className="w-3.5 h-3.5" /> Logs
-                      </button>
-                      <button
-                        disabled={isRunning}
-                        onClick={e => { e.stopPropagation(); handleRun(meta); }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-white bg-gray-900 rounded-lg hover:bg-black disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <PlayIcon className="w-3 h-3" /> {isRunning ? 'Running…' : 'Run now'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
+      <div className="space-y-3">
+        {/* ── DataForSEO ── */}
+        <div className="border border-gray-200 rounded-xl bg-white p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[13px] font-bold text-gray-900">DataForSEO</div>
+              <div className="text-[11px] text-gray-500">Site crawl, backlink data &amp; SERP analysis</div>
+            </div>
+            <div className="flex items-center gap-2">
+              {dfsConnected && (
+                <span className="text-[11px] text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
+                  <CheckCircleIcon className="w-3 h-3" /> Connected
+                </span>
+              )}
+              {dfsConnected && (
+                <button onClick={handleDfsRemove} className="text-[12px] text-red-500 hover:text-red-700 font-medium transition-colors">Remove</button>
               )}
             </div>
-          );
-        })}
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder={dfsConnected ? 'Login (replace)' : 'Login email'}
+              value={dfsLogin}
+              onChange={e => setDfsLogin(e.target.value)}
+              className="flex-1 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-[13px] font-mono focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+            />
+            <div className="relative flex-1">
+              <input
+                type={showDfsPass ? 'text' : 'password'}
+                placeholder={dfsConnected ? 'Password (replace)' : 'API password'}
+                value={dfsPass}
+                onChange={e => setDfsPass(e.target.value)}
+                className="w-full px-3 py-1.5 pr-9 bg-white border border-gray-200 rounded-lg text-[13px] font-mono focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+              />
+              <button type="button" onClick={() => setShowDfsPass(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {showDfsPass ? <EyeSlashIcon className="w-3.5 h-3.5" /> : <EyeIcon className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            <button
+              onClick={handleDfsSave}
+              disabled={dfsSaving || !dfsLogin || !dfsPass}
+              className="px-3 py-1.5 text-[12px] font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              {dfsSaving && <ArrowPathIcon className="w-3 h-3 animate-spin" />} Save
+            </button>
+            {dfsConnected && (
+              <button onClick={handleDfsTest} disabled={dfsTesting} className="px-3 py-1.5 text-[12px] font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1">
+                {dfsTesting ? <ArrowPathIcon className="w-3 h-3 animate-spin" /> : <PlayIcon className="w-3 h-3" />} Test
+              </button>
+            )}
+          </div>
+          {dfsFeedback && (
+            <div className={`flex items-center gap-1.5 text-[11px] font-medium ${dfsFeedback.ok ? 'text-green-600' : 'text-red-600'}`}>
+              {dfsFeedback.ok ? <CheckCircleIcon className="w-3.5 h-3.5" /> : <ExclamationCircleIcon className="w-3.5 h-3.5" />}
+              {dfsFeedback.message}
+            </div>
+          )}
+        </div>
+
+        {/* ── Google Search Console ── */}
+        <div className="border border-gray-200 rounded-xl bg-white p-4 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[13px] font-bold text-gray-900">Google Search Console</div>
+              <div className="text-[11px] text-gray-500">Site queries, impressions &amp; click data — OAuth2</div>
+            </div>
+            <div className="flex items-center gap-2">
+              {gscConnected ? (
+                <>
+                  <span className="text-[11px] text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
+                    <CheckCircleIcon className="w-3 h-3" /> Connected
+                  </span>
+                  <button onClick={handleGSCDisconnect} className="text-[12px] text-red-500 hover:text-red-700 font-medium transition-colors">Disconnect</button>
+                </>
+              ) : (
+                <button
+                  onClick={handleGSCConnect}
+                  className="px-3 py-1.5 text-[12px] font-bold text-white bg-[#d92d78] hover:bg-[#c2185b] rounded-lg transition-colors"
+                >
+                  Connect with Google
+                </button>
+              )}
+            </div>
+          </div>
+          {gscConnected && gscProperties && gscProperties.length > 0 && (
+            <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
+              <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider shrink-0">Property</label>
+              <select
+                value={gscSelectedProperty}
+                onChange={e => handleGSCPropertyChange(e.target.value)}
+                className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] text-gray-800 focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+              >
+                <option value="">Select a property…</option>
+                {gscProperties.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          )}
+          {gscConnected && gscProperties && gscProperties.length === 0 && (
+            <div className="text-[11px] text-gray-400 pt-1 border-t border-gray-100">No GSC properties found on this account.</div>
+          )}
+        </div>
+
+        {/* ── Google PageSpeed Insights ── */}
+        <div className="border border-gray-200 rounded-xl bg-white p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[13px] font-bold text-gray-900">Google PageSpeed Insights</div>
+              <div className="text-[11px] text-gray-500">Core Web Vitals — LCP, CLS, FID per page</div>
+            </div>
+            <div className="flex items-center gap-2">
+              {psConnected && (
+                <span className="text-[11px] text-green-600 bg-green-50 border border-green-200 px-2 py-0.5 rounded-md font-medium flex items-center gap-1">
+                  <CheckCircleIcon className="w-3 h-3" /> Connected
+                </span>
+              )}
+              {psConnected && (
+                <button onClick={handlePsRemove} className="text-[12px] text-red-500 hover:text-red-700 font-medium transition-colors">Remove</button>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <input
+                type={showPsKey ? 'text' : 'password'}
+                placeholder={psConnected ? '•••••••• (replace key)' : 'Enter API key…'}
+                value={psKey}
+                onChange={e => setPsKey(e.target.value)}
+                className="w-full px-3 py-1.5 pr-9 bg-white border border-gray-200 rounded-lg text-[13px] font-mono focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+              />
+              <button type="button" onClick={() => setShowPsKey(v => !v)} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                {showPsKey ? <EyeSlashIcon className="w-3.5 h-3.5" /> : <EyeIcon className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            <button
+              onClick={handlePsSave}
+              disabled={psSaving || !psKey}
+              className="px-3 py-1.5 text-[12px] font-bold text-white bg-gray-900 hover:bg-black rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              {psSaving && <ArrowPathIcon className="w-3 h-3 animate-spin" />} Save
+            </button>
+            {psConnected && (
+              <button onClick={handlePsTest} disabled={psTesting} className="px-3 py-1.5 text-[12px] font-bold text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors disabled:opacity-40 flex items-center gap-1">
+                {psTesting ? <ArrowPathIcon className="w-3 h-3 animate-spin" /> : <PlayIcon className="w-3 h-3" />} Test
+              </button>
+            )}
+          </div>
+          {psFeedback && (
+            <div className={`flex items-center gap-1.5 text-[11px] font-medium ${psFeedback.ok ? 'text-green-600' : 'text-red-600'}`}>
+              {psFeedback.ok ? <CheckCircleIcon className="w-3.5 h-3.5" /> : <ExclamationCircleIcon className="w-3.5 h-3.5" />}
+              {psFeedback.message}
+            </div>
+          )}
+        </div>
       </div>
+    </div>
+  );
+};
+
+// ─── Tasks Output Tab ─────────────────────────────────────────────────────────
+
+const TasksOutputTab = ({ issues, projectID }) => {
+  const [selected, setSelected] = useState(new Set());
+  const [sprintList, setSprintList] = useState([]);
+  const [sprintId, setSprintId] = useState('');
+  const [pushing, setPushing] = useState(false);
+  const [pushResult, setPushResult] = useState(null);
+
+  useEffect(() => {
+    if (!projectID) return;
+    axios.get(`/projects/${projectID}/sprints`)
+      .then(r => setSprintList(r.data?.body?.sprints || []))
+      .catch(() => {});
+  }, [projectID]);
+
+  const eligible = (issues || []).filter(i => !i.affooTaskID && i.severity !== 'INFO');
+  const allSelected = eligible.length > 0 && eligible.every(i => selected.has(i.id));
+
+  const toggleSelect = (id) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(eligible.map(i => i.id)));
+    }
+  };
+
+  const handlePush = async () => {
+    if (!sprintId || selected.size === 0) return;
+    setPushing(true);
+    setPushResult(null);
+    try {
+      await pushIssuesToAffooh({ issueIds: [...selected], sprintId: Number(sprintId) });
+      setPushResult({ ok: true, message: `${selected.size} task${selected.size > 1 ? 's' : ''} created in AFFOOH` });
+      setSelected(new Set());
+      setSprintId('');
+    } catch (e) {
+      setPushResult({ ok: false, message: e?.response?.data?.error || 'Failed to create tasks' });
+    } finally {
+      setPushing(false);
+    }
+  };
+
+  if (!issues?.length) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center">
+        <ClipboardDocumentCheckIcon className="w-12 h-12 text-gray-200 mb-4" />
+        <div className="text-[14px] font-semibold text-gray-500 mb-1">No tasks yet</div>
+        <div className="text-[13px] text-gray-400">Tasks extracted from the SEO report will appear here.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {/* ── Toolbar ── */}
+      {eligible.length > 0 && (
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-100 pb-2.5 mb-1 flex items-center gap-2.5">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={handleSelectAll}
+            className="w-4 h-4 accent-[#d92d78] cursor-pointer shrink-0"
+          />
+          <span className="text-[12px] text-gray-500 font-medium flex-1">
+            {selected.size > 0 ? `${selected.size} selected` : `${eligible.length} actionable issues`}
+          </span>
+          {selected.size > 0 && (
+            <>
+              <select
+                value={sprintId}
+                onChange={e => setSprintId(e.target.value)}
+                className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-[12px] text-gray-700 focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78] max-w-[150px] truncate"
+              >
+                <option value="">Select sprint…</option>
+                {sprintList.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.name || s.sprintName || `Sprint ${s.id}`}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={handlePush}
+                disabled={pushing || !sprintId}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-bold text-white bg-[#d92d78] hover:bg-[#c2185b] rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+              >
+                {pushing
+                  ? <ArrowPathIcon className="w-3 h-3 animate-spin" />
+                  : <PlusIcon className="w-3 h-3" />}
+                {pushing ? 'Creating…' : 'Create in AFFOOH'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Push feedback ── */}
+      {pushResult && (
+        <div className={`flex items-center gap-1.5 text-[11px] font-medium mb-1 ${pushResult.ok ? 'text-green-600' : 'text-red-600'}`}>
+          {pushResult.ok
+            ? <CheckCircleIcon className="w-3.5 h-3.5 shrink-0" />
+            : <ExclamationCircleIcon className="w-3.5 h-3.5 shrink-0" />}
+          {pushResult.message}
+        </div>
+      )}
+
+      {/* ── No sprint warning ── */}
+      {!projectID && (
+        <div className="text-[11px] text-orange-500 font-medium mb-1 flex items-center gap-1">
+          <ExclamationCircleIcon className="w-3.5 h-3.5 shrink-0" />
+          Link a project in Configure → Site Info to enable sprint selection
+        </div>
+      )}
+
+      {/* ── Issue count label ── */}
+      <div className="text-[11px] font-bold text-gray-400 tracking-wider uppercase px-0.5">
+        {issues.length} issues · auto-created as Affooh tasks
+      </div>
+
+      {/* ── Issue rows ── */}
+      {issues.map((issue) => {
+        const isEligible = !issue.affooTaskID && issue.severity !== 'INFO';
+        const isSelected = selected.has(issue.id);
+        return (
+          <div
+            key={issue.id}
+            onClick={() => isEligible && toggleSelect(issue.id)}
+            className={`bg-white border rounded-xl p-3.5 shadow-sm flex items-start gap-3 transition-colors
+              ${isEligible ? 'cursor-pointer hover:border-[#d92d78]/40' : ''}
+              ${isSelected ? 'border-[#d92d78] ring-1 ring-[#d92d78]/20' : 'border-gray-200'}`}
+          >
+            <div className="shrink-0 mt-0.5 w-4">
+              {isEligible && (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => toggleSelect(issue.id)}
+                  onClick={e => e.stopPropagation()}
+                  className="w-4 h-4 accent-[#d92d78] cursor-pointer"
+                />
+              )}
+            </div>
+            <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
+              issue.severity === 'CRITICAL'
+                ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                : issue.severity === 'WARNING'
+                ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                : 'bg-blue-50 text-blue-600 border border-blue-100'
+            }`}>{issue.severity}</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[13px] font-semibold text-gray-900 capitalize">
+                {issue.issueType?.replace(/_/g, ' ')}
+              </div>
+              <div className="text-[11px] text-gray-400 truncate mt-0.5">{issue.pageURL}</div>
+            </div>
+            <div className="shrink-0 text-right">
+              {issue.affooTaskID ? (
+                issue.taskClosedAt
+                  ? <span className="text-[11px] font-medium text-green-600 flex items-center gap-1"><CheckCircleIcon className="w-3.5 h-3.5" /> Fixed</span>
+                  : <span className="text-[11px] font-medium text-gray-500">Task #{issue.affooTaskID}</span>
+              ) : (
+                issue.severity === 'INFO'
+                  ? <span className="text-[11px] text-gray-400">—</span>
+                  : <span className="text-[11px] text-orange-500 font-medium">No task</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -1135,29 +1330,28 @@ const AgentsLayout = () => {
           </>
         ) : (
           <div className="flex-1 overflow-y-auto">
-            <AutomatedTasksTab
-              seoEnabled={seoEnabled}
-              onOpenConfigure={() => setIsConfigureModalOpen(true)}
-            />
             {currentAgent.id === 'seo' && (
-              <SiteInfoSection
-                siteConfig={seoSiteConfig}
-                schedule={seoSchedule}
-                onSaveSiteConfig={async (cfg) => {
-                  const result = await dispatch(doSaveSiteConfig(cfg));
-                  if (doSaveSiteConfig.rejected.match(result)) {
-                    throw new Error(result.payload || 'Failed to save site configuration');
-                  }
-                }}
-                onSaveSchedule={async (sch) => {
-                  const result = await dispatch(doSaveSchedule(sch));
-                  if (doSaveSchedule.rejected.match(result)) {
-                    throw new Error(result.payload || 'Failed to save schedule');
-                  }
-                }}
-                webhookUrl={webhookUrl}
-                projectList={projectList}
-              />
+              <>
+                <ApiConfigSection />
+                <SiteInfoSection
+                  siteConfig={seoSiteConfig}
+                  schedule={seoSchedule}
+                  onSaveSiteConfig={async (cfg) => {
+                    const result = await dispatch(doSaveSiteConfig(cfg));
+                    if (doSaveSiteConfig.rejected.match(result)) {
+                      throw new Error(result.payload || 'Failed to save site configuration');
+                    }
+                  }}
+                  onSaveSchedule={async (sch) => {
+                    const result = await dispatch(doSaveSchedule(sch));
+                    if (doSaveSchedule.rejected.match(result)) {
+                      throw new Error(result.payload || 'Failed to save schedule');
+                    }
+                  }}
+                  webhookUrl={webhookUrl}
+                  projectList={projectList}
+                />
+              </>
             )}
           </div>
         )}
@@ -1398,46 +1592,11 @@ const AgentsLayout = () => {
               <div className="flex items-center justify-center h-48 text-gray-400 text-[13px]">
                 <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading…
               </div>
-            ) : seoReportDetail?.issues?.length > 0 ? (
-              <div className="space-y-2">
-                <div className="text-[11px] font-bold text-gray-400 tracking-wider uppercase px-1 mb-3">
-                  {seoReportDetail.issues.length} issues · auto-created as Affooh tasks
-                </div>
-                {seoReportDetail.issues.map((issue) => (
-                  <div key={issue.id} className="bg-white border border-gray-200 rounded-xl p-3.5 shadow-sm flex items-start gap-3">
-                    <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
-                      issue.severity === 'CRITICAL'
-                        ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                        : issue.severity === 'WARNING'
-                        ? 'bg-orange-100 text-orange-700 border border-orange-200'
-                        : 'bg-blue-50 text-blue-600 border border-blue-100'
-                    }`}>{issue.severity}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-semibold text-gray-900 capitalize">
-                        {issue.issueType?.replace(/_/g, ' ')}
-                      </div>
-                      <div className="text-[11px] text-gray-400 truncate mt-0.5">{issue.pageURL}</div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      {issue.affooTaskID ? (
-                        issue.taskClosedAt
-                          ? <span className="text-[11px] font-medium text-green-600 flex items-center gap-1"><CheckCircleIcon className="w-3.5 h-3.5" /> Fixed</span>
-                          : <span className="text-[11px] font-medium text-gray-500">Task #{issue.affooTaskID}</span>
-                      ) : (
-                        issue.severity === 'INFO'
-                          ? <span className="text-[11px] text-gray-400">—</span>
-                          : <span className="text-[11px] text-orange-500 font-medium">No task</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <ClipboardDocumentCheckIcon className="w-12 h-12 text-gray-200 mb-4" />
-                <div className="text-[14px] font-semibold text-gray-500 mb-1">No tasks yet</div>
-                <div className="text-[13px] text-gray-400">Tasks extracted from the SEO report will appear here.</div>
-              </div>
+              <TasksOutputTab
+                issues={seoReportDetail?.issues}
+                projectID={seoSiteConfig?.projectID}
+              />
             )
           )}
 

@@ -26,10 +26,6 @@ import {
   saveCredential,
   testCredential,
   deleteCredential,
-  getGSCAuthURL,
-  disconnectGSC,
-  getGSCProperties,
-  saveGSCProperty,
   toggleTool,
   getAgentSettings,
   saveAgentSettings,
@@ -763,8 +759,8 @@ const SectionLabel = ({ children }) => (
 
 // Default isEnabled for providers not yet in DB
 const TOOL_DEFAULT_ENABLED = {
-  SERP_API: true, AHREFS: true, DATAFORSEO: true, GSC: true,
-  SCREAMING_FROG: false, PAGESPEED: true,
+  SERP_API: true, AHREFS: true,
+  SCREAMING_FROG: false,
   WEB_FETCH: true, GRAMMAR_API: false,
   LINEAR_API: true, SLACK_POST: false,
 };
@@ -774,18 +770,6 @@ const ToolsTab = () => {
   const [error, setError] = useState(null);
   const [creds, setCreds] = useState({});
   const [toolEnabled, setToolEnabled] = useState({});
-  const [gscProperties, setGscProperties] = useState(null);
-  const [gscSelectedProperty, setGscSelectedProperty] = useState('');
-
-  const loadGSCProperties = useCallback(async () => {
-    try {
-      const data = await getGSCProperties();
-      setGscProperties(data.properties || []);
-      setGscSelectedProperty(data.selectedProperty || '');
-    } catch (_) {
-      setGscProperties([]);
-    }
-  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -799,7 +783,6 @@ const ToolsTab = () => {
         enabled[p] = raw[p] !== undefined ? Boolean(raw[p].isEnabled) : TOOL_DEFAULT_ENABLED[p];
       });
       setToolEnabled(enabled);
-      if (raw['GSC']?.isConnected) loadGSCProperties();
     } catch (e) {
       const status = e?.response?.status;
       if (!status || status >= 500) setError('Failed to load credentials. Please try again.');
@@ -807,7 +790,7 @@ const ToolsTab = () => {
     } finally {
       setLoading(false);
     }
-  }, [loadGSCProperties]);
+  }, []);
 
   useEffect(() => { load(); }, [load]);
 
@@ -818,47 +801,6 @@ const ToolsTab = () => {
     } catch (e) {
       setToolEnabled(prev => ({ ...prev, [provider]: !newVal }));
     }
-  };
-
-  const gscStatus = creds['GSC']?.isConnected ? 'connected' : 'disconnected';
-  const dfsStatus = creds['DATAFORSEO']?.isConnected ? 'connected' : 'disconnected';
-
-  const handleGSCConnect = async () => {
-    try {
-      const { authURL } = await getGSCAuthURL();
-      const popup = window.open(authURL, 'gsc-oauth', 'width=600,height=700');
-      if (!popup) { window.open(authURL, '_blank'); return; }
-      const timer = setInterval(async () => {
-        if (popup.closed) {
-          clearInterval(timer);
-          // Refetch creds to check if GSC is now connected
-          const data = await getCredentials().catch(() => null);
-          if (data?.credentials?.GSC?.isConnected) {
-            setCreds(prev => ({ ...prev, GSC: { isConnected: true } }));
-            loadGSCProperties();
-          }
-        }
-      }, 600);
-    } catch (e) {
-      console.error('GSC connect error', e);
-    }
-  };
-
-  const handleGSCDisconnect = async () => {
-    if (!window.confirm('Disconnect Google Search Console?')) return;
-    try {
-      await disconnectGSC();
-      setCreds(prev => ({ ...prev, GSC: { ...prev.GSC, isConnected: false } }));
-      setGscProperties(null);
-      setGscSelectedProperty('');
-    } catch (e) {
-      console.error('GSC disconnect error', e);
-    }
-  };
-
-  const handleGSCPropertyChange = async (property) => {
-    setGscSelectedProperty(property);
-    saveGSCProperty(property).catch(() => {});
   };
 
   if (loading) {
@@ -913,28 +855,6 @@ const ToolsTab = () => {
           onTest={() => testCredential('ahrefs')}
           onDelete={async () => { await deleteCredential('ahrefs'); setCreds(p => ({ ...p, AHREFS: { ...p.AHREFS, isConnected: false } })); }}
         />
-        <ProviderRow
-          provider="DATAFORSEO"
-          label="DataForSEO"
-          description="Site crawl, backlink data & SERP analysis"
-          type="basic-auth"
-          status={dfsStatus}
-          onSave={async (creds) => { const data = await saveCredential('dataforseo', creds); setCreds((p) => ({ ...p, DATAFORSEO: { isConnected: true } })); return data; }}
-          onTest={() => testCredential('dataforseo')}
-          onDelete={async () => { await deleteCredential('dataforseo'); setCreds((p) => ({ ...p, DATAFORSEO: { isConnected: false } })); }}
-        />
-        <ProviderRow
-          provider="GSC"
-          label="Google Search Console"
-          description="Site queries, impressions & click data"
-          type="oauth"
-          status={gscStatus}
-          onConnect={handleGSCConnect}
-          onDisconnect={handleGSCDisconnect}
-          properties={gscProperties}
-          selectedProperty={gscSelectedProperty}
-          onSelectProperty={handleGSCPropertyChange}
-        />
         <StaticToolRow
           name="screaming_frog_cli"
           description="Technical site crawl"
@@ -947,16 +867,6 @@ const ToolsTab = () => {
           onToggle={v => handleToggle('SCREAMING_FROG', v)}
           onSave={async payload => { const data = await saveCredential('screaming_frog', payload); setCreds(p => ({ ...p, SCREAMING_FROG: { ...p.SCREAMING_FROG, isConnected: true } })); return data; }}
           onDelete={async () => { await deleteCredential('screaming_frog'); setCreds(p => ({ ...p, SCREAMING_FROG: { ...p.SCREAMING_FROG, isConnected: false } })); }}
-        />
-        <ProviderRow
-          provider="PAGESPEED"
-          label="Google PageSpeed Insights"
-          description="Core Web Vitals — LCP, CLS, FID per page"
-          type="apikey"
-          status={creds['PAGESPEED']?.isConnected ? 'connected' : 'disconnected'}
-          onSave={async (key) => { await saveCredential('pagespeed', { apiKey: key }); setCreds(p => ({ ...p, PAGESPEED: { isConnected: true } })); }}
-          onTest={() => testCredential('pagespeed')}
-          onDelete={async () => { await deleteCredential('pagespeed'); setCreds(p => ({ ...p, PAGESPEED: { isConnected: false } })); }}
         />
       </div>
 
