@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ConfirmationDialog from '../../components/ConfirmationDialog';
 import {
   XMarkIcon,
   SparklesIcon,
@@ -61,6 +62,7 @@ const ModelTab = ({ agentType }) => {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const [selectedCard, setSelectedCard] = useState(null); // PROVIDER_MODELS index
   const [apiKey, setApiKey] = useState('');
@@ -158,7 +160,11 @@ const ModelTab = ({ agentType }) => {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Remove AI model configuration?')) return;
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteConfirmed = async () => {
+    setDeleteConfirmOpen(false);
     setDeleting(true);
     try {
       await deleteModelConfig(agentType);
@@ -359,6 +365,13 @@ const ModelTab = ({ agentType }) => {
           </button>
         )}
       </div>
+      <ConfirmationDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => setDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteConfirmed}
+        title="Remove Configuration?"
+        message="This will delete the saved API key and model settings for this agent."
+      />
     </div>
   );
 };

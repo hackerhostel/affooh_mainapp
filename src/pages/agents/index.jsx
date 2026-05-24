@@ -86,6 +86,7 @@ import { PlayIcon } from '@heroicons/react/24/solid';
 import { useHistory } from 'react-router-dom';
 import NewAgentModal from './NewAgentModal';
 import ConfigureAgentModal from './ConfigureAgentModal';
+import ConfirmationDialog from '../../components/ConfirmationDialog';
 
 const Toggle = ({ checked, onChange }) => (
   <div
@@ -428,6 +429,9 @@ const ApiConfigSection = () => {
   // GSC
   const [gscProperties, setGscProperties] = useState(null);
   const [gscSelectedProperty, setGscSelectedProperty] = useState('');
+  const [gscDisconnectConfirmOpen, setGscDisconnectConfirmOpen] = useState(false);
+  const [dfsRemoveConfirmOpen, setDfsRemoveConfirmOpen] = useState(false);
+  const [psRemoveConfirmOpen, setPsRemoveConfirmOpen] = useState(false);
 
   // PageSpeed
   const [psKey, setPsKey] = useState('');
@@ -487,7 +491,10 @@ const ApiConfigSection = () => {
     }
   };
 
-  const handleDfsRemove = async () => {
+  const handleDfsRemove = () => setDfsRemoveConfirmOpen(true);
+
+  const handleDfsRemoveConfirmed = async () => {
+    setDfsRemoveConfirmOpen(false);
     await deleteCredential('dataforseo').catch(() => {});
     setCreds(p => ({ ...p, DATAFORSEO: { isConnected: false } }));
     setDfsFeedback(null);
@@ -511,8 +518,12 @@ const ApiConfigSection = () => {
     } catch (_) {}
   };
 
-  const handleGSCDisconnect = async () => {
-    if (!window.confirm('Disconnect Google Search Console?')) return;
+  const handleGSCDisconnect = () => {
+    setGscDisconnectConfirmOpen(true);
+  };
+
+  const handleGSCDisconnectConfirmed = async () => {
+    setGscDisconnectConfirmOpen(false);
     await disconnectGSC().catch(() => {});
     setCreds(p => ({ ...p, GSC: { isConnected: false } }));
     setGscProperties(null);
@@ -553,7 +564,10 @@ const ApiConfigSection = () => {
     }
   };
 
-  const handlePsRemove = async () => {
+  const handlePsRemove = () => setPsRemoveConfirmOpen(true);
+
+  const handlePsRemoveConfirmed = async () => {
+    setPsRemoveConfirmOpen(false);
     await deleteCredential('pagespeed').catch(() => {});
     setCreds(p => ({ ...p, PAGESPEED: { isConnected: false } }));
     setPsFeedback(null);
@@ -733,6 +747,27 @@ const ApiConfigSection = () => {
           )}
         </div>
       </div>
+      <ConfirmationDialog
+        isOpen={dfsRemoveConfirmOpen}
+        onClose={() => setDfsRemoveConfirmOpen(false)}
+        onConfirm={handleDfsRemoveConfirmed}
+        title="Remove DataForSEO?"
+        message="This will delete your saved DataForSEO credentials."
+      />
+      <ConfirmationDialog
+        isOpen={psRemoveConfirmOpen}
+        onClose={() => setPsRemoveConfirmOpen(false)}
+        onConfirm={handlePsRemoveConfirmed}
+        title="Remove PageSpeed Insights?"
+        message="This will delete your saved Google PageSpeed Insights API key."
+      />
+      <ConfirmationDialog
+        isOpen={gscDisconnectConfirmOpen}
+        onClose={() => setGscDisconnectConfirmOpen(false)}
+        onConfirm={handleGSCDisconnectConfirmed}
+        title="Disconnect Google Search Console?"
+        message="This will remove your GSC connection. You can reconnect at any time."
+      />
     </div>
   );
 };
