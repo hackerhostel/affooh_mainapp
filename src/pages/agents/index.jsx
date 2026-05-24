@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { toast } from 'react-toastify';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   doLoadSeoData,
@@ -218,7 +219,7 @@ const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedul
     if (siteConfig) {
       setSiteForm({
         siteURL: siteConfig.siteURL || siteConfig.siteUrl || '',
-        projectID: siteConfig.projectID ?? '',
+        projectID: siteConfig.projectID ?? null,
         maxPagesPerCrawl: siteConfig.maxPagesPerCrawl ?? 5000,
         crawlDepth: siteConfig.crawlDepth ?? 5,
         crawlSpeed: siteConfig.crawlSpeed || 'normal',
@@ -247,6 +248,7 @@ const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedul
     try {
       const payload = {
         ...siteForm,
+        projectID: siteForm.projectID || null,
         maxPagesPerCrawl: Number(siteForm.maxPagesPerCrawl),
         crawlDepth: Number(siteForm.crawlDepth),
         excludeURLPatterns: siteForm.excludeURLPatterns
@@ -255,6 +257,9 @@ const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedul
       await onSaveSiteConfig(payload);
       setSiteSaved(true);
       setTimeout(() => setSiteSaved(false), 2000);
+      toast.success('Site configuration saved');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save site configuration');
     } finally {
       setSiteSaving(false);
     }
@@ -266,6 +271,9 @@ const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedul
       await onSaveSchedule(schedForm);
       setSchedSaved(true);
       setTimeout(() => setSchedSaved(false), 2000);
+      toast.success('Schedule saved');
+    } catch (err) {
+      toast.error(err?.message || 'Failed to save schedule');
     } finally {
       setSchedSaving(false);
     }
@@ -540,7 +548,9 @@ const AutomatedTasksTab = ({ onOpenConfigure }) => {
       isEnabled: merged.enabled,
       scheduleType: schedType,
       config,
-    }).catch(() => {});
+    }).catch(() => {
+      toast.error(`Failed to save ${meta.name} settings`);
+    });
   };
 
   const toggleTask = (meta) => {
@@ -566,7 +576,6 @@ const AutomatedTasksTab = ({ onOpenConfigure }) => {
   const handleRun = async (meta) => {
     setRunningIds(prev => ({ ...prev, [meta.id]: true }));
     try {
-      // Save current config first, then trigger
       const config = fieldValues[meta.id] || {};
       const schedType = SCHEDULE_LABEL_TO_TYPE[taskState[meta.id]?.schedule] || 'OFF';
       await saveSeoTask(meta.taskType, {
@@ -579,8 +588,9 @@ const AutomatedTasksTab = ({ onOpenConfigure }) => {
         ...prev,
         [meta.id]: { ...prev[meta.id], totalRuns: (prev[meta.id]?.totalRuns || 0) + 1, lastRunAt: new Date().toISOString() },
       }));
+      toast.success(`${meta.name} started`);
     } catch (e) {
-      // swallow — user sees no change
+      toast.error(`Failed to run ${meta.name}`);
     } finally {
       setRunningIds(prev => ({ ...prev, [meta.id]: false }));
     }
@@ -1133,8 +1143,18 @@ const AgentsLayout = () => {
               <SiteInfoSection
                 siteConfig={seoSiteConfig}
                 schedule={seoSchedule}
-                onSaveSiteConfig={(cfg) => dispatch(doSaveSiteConfig(cfg))}
-                onSaveSchedule={(sch) => dispatch(doSaveSchedule(sch))}
+                onSaveSiteConfig={async (cfg) => {
+                  const result = await dispatch(doSaveSiteConfig(cfg));
+                  if (doSaveSiteConfig.rejected.match(result)) {
+                    throw new Error(result.payload || 'Failed to save site configuration');
+                  }
+                }}
+                onSaveSchedule={async (sch) => {
+                  const result = await dispatch(doSaveSchedule(sch));
+                  if (doSaveSchedule.rejected.match(result)) {
+                    throw new Error(result.payload || 'Failed to save schedule');
+                  }
+                }}
                 webhookUrl={webhookUrl}
                 projectList={projectList}
               />
