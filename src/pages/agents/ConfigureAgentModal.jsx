@@ -31,6 +31,8 @@ import {
   getGSCProperties,
   saveGSCProperty,
   toggleTool,
+  getAgentSettings,
+  saveAgentSettings,
 } from './agentApi';
 
 const Toggle = ({ checked, onChange }) => (
@@ -642,12 +644,10 @@ const StaticToolRow = ({
     setSaving(true);
     setFeedback(null);
     try {
-      const result = await onSave({ [keyField]: keyVal.trim() });
-      console.log('[StaticToolRow] save result:', result);
+      await onSave({ [keyField]: keyVal.trim() });
       setKeyVal('');
       setFeedback({ ok: true, message: 'Saved successfully.' });
     } catch (e) {
-      console.error('[StaticToolRow] save error:', e?.response?.status, e?.response?.data);
       setFeedback({ ok: false, message: e?.response?.data?.error || 'Save failed.' });
     } finally {
       setSaving(false);
@@ -826,7 +826,7 @@ const ToolsTab = () => {
   const handleGSCConnect = async () => {
     try {
       const { authURL } = await getGSCAuthURL();
-      const popup = window.open(authURL, 'gsc-oauth', 'width=600,height=700,noopener,noreferrer');
+      const popup = window.open(authURL, 'gsc-oauth', 'width=600,height=700');
       if (!popup) { window.open(authURL, '_blank'); return; }
       const timer = setInterval(async () => {
         if (popup.closed) {
@@ -1023,9 +1023,21 @@ const ToolsTab = () => {
 
 // ─── Main Modal ──────────────────────────────────────────────────────────────
 
-const ConfigureAgentModal = ({ isOpen, onClose, agent }) => {
+const ACCENT_COLORS = ['#e65c69', '#df6c4f', '#d97d26', '#31a651', '#0ca7a6', '#0ea5e9', '#3e82f7', '#7c59e6', '#c451b6'];
+
+const ConfigureAgentModal = ({ isOpen, onClose, agent, isEnabled, onToggleEnabled, agentToggling }) => {
   const [activeTab, setActiveTab] = useState('identity');
   const [footerSaved, setFooterSaved] = useState(false);
+  const [footerSaving, setFooterSaving] = useState(false);
+  const [footerError, setFooterError] = useState(null);
+
+  // Identity tab controlled state
+  const [displayName, setDisplayName] = useState('');
+  const [shortCode, setShortCode] = useState('');
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [description, setDescription] = useState('');
+  const [accentColor, setAccentColor] = useState(ACCENT_COLORS[1]);
+  const [identityLoaded, setIdentityLoaded] = useState(false);
 
   const [temperature, setTemperature] = useState(0.4);
   const [topP, setTopP] = useState(0.9);
@@ -1054,9 +1066,33 @@ const ConfigureAgentModal = ({ isOpen, onClose, agent }) => {
     { key: 'tone_avoid', value: 'superlatives, exclamation marks' },
   ];
 
-  if (!isOpen) return null;
-
   const agentType = agent?.agentType || 'SEO';
+
+  // Load identity settings once when the modal opens
+  useEffect(() => {
+    if (!isOpen || identityLoaded) return;
+    getAgentSettings(agentType).then(res => {
+      const s = res?.settings?.identity || {};
+      setDisplayName(s.displayName ?? agent?.name ?? '');
+      setShortCode(s.shortCode ?? agent?.init ?? '');
+      setSystemPrompt(s.systemPrompt ?? 'Technical SEO strategist. Audits sites, identifies keyword gaps, drafts on-page recommendations and tracks SERP movement.');
+      setDescription(s.description ?? 'Owns SEO strategy and execution for affooh.com.');
+      setAccentColor(s.accentColor ?? ACCENT_COLORS[1]);
+      setIdentityLoaded(true);
+    }).catch(() => {
+      // Fall back to defaults silently
+      setDisplayName(agent?.name ?? '');
+      setShortCode(agent?.init ?? '');
+      setIdentityLoaded(true);
+    });
+  }, [isOpen, agentType, identityLoaded, agent]);
+
+  // Reset identity loaded state when modal closes
+  useEffect(() => {
+    if (!isOpen) setIdentityLoaded(false);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
 
   const tabs = [
     { id: 'identity', label: 'Identity', icon: SparklesIcon },
@@ -1122,21 +1158,39 @@ const ConfigureAgentModal = ({ isOpen, onClose, agent }) => {
                   <div className="text-[18px] font-bold text-gray-900 mb-1">Identity</div>
                   <p className="text-[13px] text-gray-500">A clear persona makes the agent's outputs more consistent and steerable.</p>
                 </div>
+                {onToggleEnabled !== undefined && (
+                  <div className="mb-5 flex items-center justify-between p-4 bg-white border border-gray-200 rounded-xl shadow-sm">
+                    <div>
+                      <div className="text-[13px] font-bold text-gray-900">Agent enabled</div>
+                      <div className="text-[12px] text-gray-500 mt-0.5">
+                        {isEnabled ? 'This agent is running and will execute scheduled tasks.' : 'This agent is disabled. No scheduled tasks will run.'}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {agentToggling && <ArrowPathIcon className="w-3.5 h-3.5 animate-spin text-gray-400" />}
+                      <Toggle checked={!!isEnabled} onChange={() => !agentToggling && onToggleEnabled()} />
+                    </div>
+                  </div>
+                )}
                 <div className="flex gap-6 mb-5">
                   <div className="flex-1">
                     <label className="block text-[13px] font-bold text-gray-800 mb-2">Display name</label>
-                    <input type="text" defaultValue={agent?.name || ''} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]" />
+                    <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]" />
                   </div>
                   <div className="flex-1">
                     <label className="block text-[13px] font-bold text-gray-800 mb-2">Short code <span className="text-gray-400 font-medium">· shown in avatars</span></label>
-                    <input type="text" defaultValue={agent?.init || ''} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]" />
+                    <input type="text" value={shortCode} onChange={e => setShortCode(e.target.value)} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]" />
                   </div>
                 </div>
                 <div className="mb-5">
                   <label className="block text-[13px] font-bold text-gray-800 mb-2">Accent color</label>
                   <div className="flex gap-3">
-                    {['#e65c69', '#df6c4f', '#d97d26', '#31a651', '#0ca7a6', '#0ea5e9', '#3e82f7', '#7c59e6', '#c451b6'].map((color, i) => (
-                      <div key={i} className={`w-[34px] h-[34px] rounded-lg cursor-pointer flex items-center justify-center ${i === 1 ? 'ring-2 ring-gray-200 ring-offset-2' : ''}`}>
+                    {ACCENT_COLORS.map((color) => (
+                      <div
+                        key={color}
+                        onClick={() => setAccentColor(color)}
+                        className={`w-[34px] h-[34px] rounded-lg cursor-pointer flex items-center justify-center ${accentColor === color ? 'ring-2 ring-[#d92d78] ring-offset-2' : ''}`}
+                      >
                         <div className="w-full h-full rounded-md border border-black/10" style={{ backgroundColor: color }}></div>
                       </div>
                     ))}
@@ -1144,11 +1198,11 @@ const ConfigureAgentModal = ({ isOpen, onClose, agent }) => {
                 </div>
                 <div className="mb-5">
                   <label className="block text-[13px] font-bold text-gray-800 mb-2">System prompt <span className="text-gray-400 font-medium">· markdown supported</span></label>
-                  <textarea rows="5" defaultValue="Technical SEO strategist. Audits sites, identifies keyword gaps, drafts on-page recommendations and tracks SERP movement." className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-[14px] font-mono focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78] resize-y"></textarea>
+                  <textarea rows="5" value={systemPrompt} onChange={e => setSystemPrompt(e.target.value)} className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-[14px] font-mono focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78] resize-y"></textarea>
                 </div>
                 <div className="mb-2">
                   <label className="block text-[13px] font-bold text-gray-800 mb-2">Description <span className="text-gray-400 font-medium">· shown to teammates</span></label>
-                  <input type="text" defaultValue="Owns SEO strategy and execution for affooh.com." className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]" />
+                  <input type="text" value={description} onChange={e => setDescription(e.target.value)} className="w-full px-3 py-2 bg-white border border-gray-300 rounded-lg text-[14px] focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]" />
                 </div>
               </div>
             )}
@@ -1331,18 +1385,36 @@ const ConfigureAgentModal = ({ isOpen, onClose, agent }) => {
             Cancel
           </button>
           <div className="flex items-center gap-4">
+            {footerError && <span className="text-[12px] text-red-500">{footerError}</span>}
             <button className="flex items-center gap-1.5 text-[13px] font-bold text-[#0f172a] hover:text-[#d92d78] transition-colors">
               <PlayIcon className="w-3.5 h-3.5" /> Test run
             </button>
             {activeTab !== 'model' && activeTab !== 'tools' && (
               <button
-                onClick={() => {
-                  setFooterSaved(true);
-                  setTimeout(() => setFooterSaved(false), 2000);
+                disabled={footerSaving}
+                onClick={async () => {
+                  setFooterError(null);
+                  if (activeTab === 'identity') {
+                    setFooterSaving(true);
+                    try {
+                      await saveAgentSettings(agentType, {
+                        identity: { displayName, shortCode, systemPrompt, description, accentColor },
+                      });
+                      setFooterSaved(true);
+                      setTimeout(() => setFooterSaved(false), 2000);
+                    } catch (e) {
+                      setFooterError(e?.response?.data?.error || 'Save failed');
+                    } finally {
+                      setFooterSaving(false);
+                    }
+                  } else {
+                    setFooterSaved(true);
+                    setTimeout(() => setFooterSaved(false), 2000);
+                  }
                 }}
-                className={`px-5 py-2 text-[13px] font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5 ${footerSaved ? 'bg-green-500 text-white' : 'bg-[#d92d78] hover:bg-[#c2185b] text-white'}`}
+                className={`px-5 py-2 text-[13px] font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${footerSaved ? 'bg-green-500 text-white' : 'bg-[#d92d78] hover:bg-[#c2185b] text-white'}`}
               >
-                {footerSaved ? <><CheckCircleIcon className="w-3.5 h-3.5" /> Saved</> : 'Save changes'}
+                {footerSaving ? <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" /> : footerSaved ? <><CheckCircleIcon className="w-3.5 h-3.5" /> Saved</> : 'Save changes'}
               </button>
             )}
             {(activeTab === 'model' || activeTab === 'tools') && (

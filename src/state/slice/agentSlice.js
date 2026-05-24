@@ -8,8 +8,12 @@ import {
   saveSeoSchedule,
   getLatestSeoReport,
   getSeoReport,
+  getSeoReportList,
   getSeoExecutions,
   runSeoAnalysis,
+  getAgentSettings,
+  saveAgentSettings,
+  chatWithAgent,
 } from '../../pages/agents/agentApi';
 
 // ─── Thunks ──────────────────────────────────────────────────────────────────
@@ -86,10 +90,42 @@ export const doGetExecutions = createAsyncThunk(
   }
 );
 
+export const doGetReportList = createAsyncThunk(
+  'agent/getReportList',
+  async (_, { rejectWithValue }) => {
+    try { return await getSeoReportList(); }
+    catch (e) { return rejectWithValue(e?.response?.data?.error || e.message); }
+  }
+);
+
 export const doRunAnalysis = createAsyncThunk(
   'agent/runAnalysis',
   async (payload, { rejectWithValue }) => {
     try { return await runSeoAnalysis(payload); }
+    catch (e) { return rejectWithValue(e?.response?.data?.error || e.message); }
+  }
+);
+
+export const doGetAgentSettings = createAsyncThunk(
+  'agent/getAgentSettings',
+  async (agentType, { rejectWithValue }) => {
+    try { return await getAgentSettings(agentType); }
+    catch (e) { return rejectWithValue(e?.response?.data?.error || e.message); }
+  }
+);
+
+export const doSaveAgentSettings = createAsyncThunk(
+  'agent/saveAgentSettings',
+  async ({ agentType, settings }, { rejectWithValue }) => {
+    try { await saveAgentSettings(agentType, settings); return { agentType, settings }; }
+    catch (e) { return rejectWithValue(e?.response?.data?.error || e.message); }
+  }
+);
+
+export const doSendChatMessage = createAsyncThunk(
+  'agent/sendChatMessage',
+  async ({ agentType, messages }, { rejectWithValue }) => {
+    try { return await chatWithAgent(agentType, messages); }
     catch (e) { return rejectWithValue(e?.response?.data?.error || e.message); }
   }
 );
@@ -102,9 +138,15 @@ export const doLoadSeoData = createAsyncThunk(
       dispatch(doGetModelConfig('SEO')),
       dispatch(doGetSchedule()),
       dispatch(doGetSiteConfig()),
-      dispatch(doGetLatestReport()),
       dispatch(doGetExecutions()),
+      dispatch(doGetReportList()),
     ]);
+    // Load latest report then fetch its full detail (includes issues array)
+    const reportResult = await dispatch(doGetLatestReport());
+    if (doGetLatestReport.fulfilled.match(reportResult)) {
+      const reportId = reportResult.payload?.report?.id;
+      if (reportId) await dispatch(doGetReportById(reportId));
+    }
   }
 );
 
@@ -126,6 +168,8 @@ const agentSlice = createSlice({
     reportList: [],
     executions: [],
     currentExecution: null,
+    agentIdentity: {},
+    chatMessages: [],
     loading: {},
     error: null,
   },
@@ -134,6 +178,8 @@ const agentSlice = createSlice({
     setConfigureModalOpen: (state, action) => { state.configureModalOpen = action.payload; },
     setConfigureActiveTab: (state, action) => { state.configureActiveTab = action.payload; },
     clearAgentError: (state) => { state.error = null; },
+    addChatMessage: (state, action) => { state.chatMessages.push(action.payload); },
+    clearChatMessages: (state) => { state.chatMessages = []; },
     // WebSocket update — real-time execution progress
     seoExecutionUpdated: (state, action) => {
       const update = action.payload;
@@ -175,7 +221,7 @@ const agentSlice = createSlice({
       .addCase(doGetSiteConfig.pending, setLoading('siteConfig'))
       .addCase(doGetSiteConfig.fulfilled, (state, action) => {
         state.loading.siteConfig = false;
-        state.seoSiteConfig = action.payload;
+        state.seoSiteConfig = action.payload?.siteConfig ?? action.payload ?? null;
       })
       .addCase(doGetSiteConfig.rejected, clearLoading('siteConfig'))
 
@@ -188,7 +234,7 @@ const agentSlice = createSlice({
       .addCase(doGetSchedule.pending, setLoading('schedule'))
       .addCase(doGetSchedule.fulfilled, (state, action) => {
         state.loading.schedule = false;
-        state.seoSchedule = action.payload;
+        state.seoSchedule = action.payload?.schedule ?? action.payload ?? null;
       })
       .addCase(doGetSchedule.rejected, clearLoading('schedule'))
 
@@ -205,11 +251,12 @@ const agentSlice = createSlice({
       })
       .addCase(doGetLatestReport.rejected, clearLoading('report'))
 
-      // getReportById
+      // getReportById — API returns { report, issues }; flatten into one object
       .addCase(doGetReportById.pending, setLoading('reportDetail'))
       .addCase(doGetReportById.fulfilled, (state, action) => {
         state.loading.reportDetail = false;
-        state.reportDetail = action.payload;
+        const { report, issues } = action.payload || {};
+        state.reportDetail = report ? { ...report, issues: issues || [] } : null;
       })
       .addCase(doGetReportById.rejected, clearLoading('reportDetail'))
 
@@ -220,6 +267,14 @@ const agentSlice = createSlice({
         state.executions = action.payload?.executions || [];
       })
       .addCase(doGetExecutions.rejected, clearLoading('executions'))
+
+      // getReportList
+      .addCase(doGetReportList.pending, setLoading('reportList'))
+      .addCase(doGetReportList.fulfilled, (state, action) => {
+        state.loading.reportList = false;
+        state.reportList = action.payload?.reports || [];
+      })
+      .addCase(doGetReportList.rejected, clearLoading('reportList'))
 
       // runAnalysis
       .addCase(doRunAnalysis.pending, setLoading('running'))
@@ -237,7 +292,39 @@ const agentSlice = createSlice({
       // loadSeoData
       .addCase(doLoadSeoData.pending, (state) => { state.loading.initial = true; })
       .addCase(doLoadSeoData.fulfilled, (state) => { state.loading.initial = false; })
-      .addCase(doLoadSeoData.rejected, (state) => { state.loading.initial = false; });
+      .addCase(doLoadSeoData.rejected, (state) => { state.loading.initial = false; })
+
+      // getAgentSettings
+      .addCase(doGetAgentSettings.pending, setLoading('identity'))
+      .addCase(doGetAgentSettings.fulfilled, (state, action) => {
+        state.loading.identity = false;
+        state.agentIdentity = action.payload?.settings || {};
+      })
+      .addCase(doGetAgentSettings.rejected, clearLoading('identity'))
+
+      // saveAgentSettings
+      .addCase(doSaveAgentSettings.pending, setLoading('savingIdentity'))
+      .addCase(doSaveAgentSettings.fulfilled, (state, action) => {
+        state.loading.savingIdentity = false;
+        state.agentIdentity = { ...state.agentIdentity, ...action.payload.settings };
+      })
+      .addCase(doSaveAgentSettings.rejected, (state, action) => {
+        state.loading.savingIdentity = false;
+        state.error = action.payload;
+      })
+
+      // sendChatMessage
+      .addCase(doSendChatMessage.pending, setLoading('chatTyping'))
+      .addCase(doSendChatMessage.fulfilled, (state, action) => {
+        state.loading.chatTyping = false;
+        if (action.payload?.response) {
+          state.chatMessages.push({ role: 'assistant', content: action.payload.response });
+        }
+      })
+      .addCase(doSendChatMessage.rejected, (state, action) => {
+        state.loading.chatTyping = false;
+        state.error = action.payload;
+      });
   },
 });
 
@@ -247,6 +334,8 @@ export const {
   setConfigureActiveTab,
   clearAgentError,
   seoExecutionUpdated,
+  addChatMessage,
+  clearChatMessages,
 } = agentSlice.actions;
 
 // ─── Selectors ───────────────────────────────────────────────────────────────
@@ -256,9 +345,12 @@ export const selectSeoSiteConfig = (s) => s.agent.seoSiteConfig;
 export const selectSeoSchedule = (s) => s.agent.seoSchedule;
 export const selectLatestReport = (s) => s.agent.latestReport;
 export const selectReportDetail = (s) => s.agent.reportDetail;
+export const selectReportList = (s) => s.agent.reportList;
 export const selectExecutions = (s) => s.agent.executions;
 export const selectCurrentExecution = (s) => s.agent.currentExecution;
 export const selectAgentLoading = (s) => s.agent.loading;
 export const selectAgentError = (s) => s.agent.error;
+export const selectAgentIdentity = (s) => s.agent.agentIdentity;
+export const selectChatMessages = (s) => s.agent.chatMessages;
 
 export default agentSlice.reducer;

@@ -1,21 +1,40 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   doLoadSeoData,
   doRunAnalysis,
+  doGetReportById,
   doSaveSiteConfig,
   doSaveSchedule,
+  doSendChatMessage,
   seoExecutionUpdated,
+  addChatMessage,
+  clearChatMessages,
   selectSeoStatus,
   selectSeoModelConfig,
   selectSeoSiteConfig,
   selectSeoSchedule,
   selectLatestReport,
   selectReportDetail,
+  selectReportList,
   selectExecutions,
+  selectCurrentExecution,
   selectAgentLoading,
   selectAgentError,
+  selectChatMessages,
 } from '../../state/slice/agentSlice';
+import {
+  doGetProjectFormData,
+  selectProjectList,
+} from '../../state/slice/projectSlice';
+import {
+  enableAgent,
+  disableAgent,
+  getSeoTasks,
+  saveSeoTask,
+  runSeoTask,
+} from './agentApi';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import {
   MagnifyingGlassIcon,
   AdjustmentsHorizontalIcon,
@@ -46,15 +65,10 @@ import { PlayIcon } from '@heroicons/react/24/solid';
 import { useHistory } from 'react-router-dom';
 import NewAgentModal from './NewAgentModal';
 import ConfigureAgentModal from './ConfigureAgentModal';
-import {
-  getSeoTasks,
-  saveSeoTask,
-  runSeoTask,
-} from './agentApi';
 
 const Toggle = ({ checked, onChange }) => (
   <div
-    onClick={e => { e.stopPropagation(); onChange(); }}
+    onClick={e => { e.stopPropagation(); onChange && onChange(!checked); }}
     className={`w-[40px] h-[22px] rounded-full relative shadow-inner transition-colors cursor-pointer shrink-0 ${checked ? 'bg-[#d92d78]' : 'bg-gray-200'}`}
   >
     <div className={`w-[18px] h-[18px] bg-white rounded-full absolute top-[2px] shadow-sm transition-all ${checked ? 'left-[20px]' : 'left-[2px]'}`} />
@@ -169,9 +183,11 @@ const SITE_SCHEDULE_OPTIONS = [
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedule }) => {
+const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedule, webhookUrl, projectList = [] }) => {
+  const [webhookCopied, setWebhookCopied] = useState(false);
   const [siteForm, setSiteForm] = useState({
     siteURL: '',
+    projectID: '',
     maxPagesPerCrawl: 5000,
     crawlDepth: 5,
     crawlSpeed: 'normal',
@@ -194,6 +210,7 @@ const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedul
     if (siteConfig) {
       setSiteForm({
         siteURL: siteConfig.siteURL || siteConfig.siteUrl || '',
+        projectID: siteConfig.projectID ?? '',
         maxPagesPerCrawl: siteConfig.maxPagesPerCrawl ?? 5000,
         crawlDepth: siteConfig.crawlDepth ?? 5,
         crawlSpeed: siteConfig.crawlSpeed || 'normal',
@@ -291,6 +308,23 @@ const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedul
               />
             </div>
           </div>
+
+          {/* Project link */}
+          {projectList.length > 0 && (
+            <div>
+              <label className="block text-[10px] font-bold text-gray-500 tracking-wider uppercase mb-1">Linked project</label>
+              <select
+                value={siteForm.projectID ?? ''}
+                onChange={e => setSiteForm(f => ({ ...f, projectID: e.target.value ? Number(e.target.value) : null }))}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-[13px] text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#d92d78]/30 focus:border-[#d92d78]"
+              >
+                <option value="">None</option>
+                {projectList.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Crawl depth */}
           <div className="w-28">
@@ -422,8 +456,20 @@ const SiteInfoSection = ({ siteConfig, schedule, onSaveSiteConfig, onSaveSchedul
           )}
 
           {schedForm.scheduleType === 'ON_DEPLOY' && (
-            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] text-gray-600">
-              Trigger via webhook after deploy. Copy the webhook URL from <span className="font-medium text-gray-900">Configure → Tools & APIs</span>.
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
+              <div className="text-[12px] text-gray-600">Trigger an SEO analysis by POSTing to this webhook after your deploy pipeline completes.</div>
+              {webhookUrl && (
+                <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+                  <span className="flex-1 font-mono text-[11px] text-gray-700 truncate">{webhookUrl}</span>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(webhookUrl); setWebhookCopied(true); setTimeout(() => setWebhookCopied(false), 2000); }}
+                    className="shrink-0 flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-gray-800 transition-colors"
+                  >
+                    <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+                    {webhookCopied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -663,6 +709,7 @@ const AgentsLayout = () => {
   const dispatch = useDispatch();
 
   // UI state — stays local
+  const history = useHistory();
   const [selectedAgent, setSelectedAgent] = useState('seo');
   const [activeTab, setActiveTab] = useState('chat');
   const [isNewAgentModalOpen, setIsNewAgentModalOpen] = useState(false);
@@ -677,29 +724,134 @@ const AgentsLayout = () => {
   const seoSiteConfig = useSelector(selectSeoSiteConfig);
   const seoReport = useSelector(selectLatestReport);
   const seoReportDetail = useSelector(selectReportDetail);
+  const reportList = useSelector(selectReportList);
   const seoExecutions = useSelector(selectExecutions);
+  const currentExecution = useSelector(selectCurrentExecution);
   const agentLoading = useSelector(selectAgentLoading);
   const seoLoading = agentLoading.initial ?? false;
   const runningAnalysis = agentLoading.running ?? false;
 
+  const [issueFilter, setIssueFilter] = useState('ALL');
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [agentToggling, setAgentToggling] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const chatMessagesEndRef = useRef(null);
+
+  const chatMessages = useSelector(selectChatMessages);
+  const chatTyping = agentLoading.chatTyping ?? false;
+  const projectList = useSelector(selectProjectList) || [];
+
+  // Backend returns full webhookURL in schedule when type is ON_DEPLOY
+  const webhookUrl = seoSchedule?.webhookURL || null;
+
+  const handleToggleAgent = async () => {
+    if (agentToggling) return;
+    setAgentToggling(true);
+    try {
+      if (seoEnabled) {
+        await disableAgent('seo');
+      } else {
+        await enableAgent('seo');
+      }
+      dispatch(doLoadSeoData());
+    } catch (_) {
+    } finally {
+      setAgentToggling(false);
+    }
+  };
+
+  const handleSelectReport = (reportId) => {
+    setSelectedReportId(reportId || null);
+    if (reportId) dispatch(doGetReportById(reportId));
+  };
+
+  // reportDetail always has { ...report, issues[] } — use it preferentially so issues render.
+  // When a past report is selected verify id matches; otherwise fall back to latest.
+  const displayedReport = selectedReportId
+    ? (seoReportDetail?.id === Number(selectedReportId) ? seoReportDetail : seoReport)
+    : (seoReportDetail || seoReport);
+
   useEffect(() => {
     dispatch(doLoadSeoData());
+    dispatch(doGetProjectFormData());
   }, [dispatch]);
 
   // WebSocket — real-time execution updates
   useEffect(() => {
-    const handler = (e) => dispatch(seoExecutionUpdated(e.detail));
-    window.addEventListener('SEO_EXECUTION_UPDATE', handler);
-    return () => window.removeEventListener('SEO_EXECUTION_UPDATE', handler);
+    const WS_URL = import.meta.env.VITE_REACT_APP_WS_HOST;
+    if (!WS_URL) return;
+
+    let ws = null;
+    let reconnectTimer = null;
+
+    const connect = async () => {
+      try {
+        const session = await fetchAuthSession();
+        const token = session.tokens?.accessToken?.toString();
+        if (!token) return;
+
+        ws = new WebSocket(WS_URL);
+
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ type: 'auth', token }));
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            if (msg.type === 'SEO_EXECUTION_UPDATE' || msg.executionId) {
+              dispatch(seoExecutionUpdated(msg));
+              if (msg.status === 'COMPLETED' || msg.status === 'FAILED' || msg.status === 'PARTIAL') {
+                setTimeout(() => dispatch(doLoadSeoData()), 1500);
+              }
+            }
+          } catch (_) {}
+        };
+
+        ws.onclose = () => {
+          reconnectTimer = setTimeout(connect, 5000);
+        };
+      } catch (_) {}
+    };
+
+    connect();
+
+    return () => {
+      clearTimeout(reconnectTimer);
+      if (ws) { ws.onclose = null; ws.close(); }
+    };
   }, [dispatch]);
 
   const loadSeoData = useCallback(() => {
     dispatch(doLoadSeoData());
   }, [dispatch]);
 
+  // Clear chat when switching agent
+  useEffect(() => {
+    dispatch(clearChatMessages());
+    setChatInput('');
+  }, [selectedAgent, dispatch]);
+
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatMessagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, chatTyping]);
+
+  const handleSendChat = async () => {
+    const text = chatInput.trim();
+    if (!text || chatTyping) return;
+    setChatInput('');
+    dispatch(addChatMessage({ role: 'user', content: text }));
+    const allMessages = [...chatMessages, { role: 'user', content: text }];
+    dispatch(doSendChatMessage({
+      agentType: currentAgent?.agentType || currentAgent?.id?.toUpperCase() || 'SEO',
+      messages: allMessages,
+    }));
+  };
+
   const handleRunAnalysis = async () => {
     setRunMessage(null);
-    const result = await dispatch(doRunAnalysis({ siteUrl: seoSiteConfig?.siteUrl }));
+    const result = await dispatch(doRunAnalysis({ siteUrl: seoSiteConfig?.siteURL }));
     if (doRunAnalysis.fulfilled.match(result)) {
       setRunMessage({ type: 'success', text: `Analysis started — execution ID: ${result.payload?.executionId || 'queued'}` });
       setTimeout(() => dispatch(doLoadSeoData()), 3000);
@@ -872,28 +1024,56 @@ const AgentsLayout = () => {
 
         {activeTab === 'chat' ? (
           <>
-            <div className="flex-1 overflow-y-auto p-6 bg-white flex flex-col items-center justify-center">
-              <div className={`w-14 h-14 rounded-full flex items-center justify-center text-[13px] font-bold ${currentAgent.color} mb-4 shadow-sm`}>
-                {currentAgent.init}
-              </div>
-              <div className="text-[15px] font-semibold text-gray-800 mb-1">{currentAgent.name}</div>
-              <div className="text-[13px] text-gray-400 mb-6 text-center max-w-xs">
-                Start a conversation. Ask this agent to run an analysis, draft content, or review your site.
-              </div>
-              <div className="flex flex-wrap gap-2 justify-center max-w-sm">
-                {currentAgent.id === 'seo' ? (
-                  <>
-                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Run a site audit</button>
-                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Find content gaps</button>
-                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Check Core Web Vitals</button>
-                  </>
-                ) : (
-                  <>
-                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Get started</button>
-                    <button className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">What can you do?</button>
-                  </>
-                )}
-              </div>
+            <div className="flex-1 overflow-y-auto p-6 bg-white flex flex-col">
+              {chatMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center flex-1">
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center text-[13px] font-bold ${currentAgent.color} mb-4 shadow-sm`}>
+                    {currentAgent.init}
+                  </div>
+                  <div className="text-[15px] font-semibold text-gray-800 mb-1">{currentAgent.name}</div>
+                  <div className="text-[13px] text-gray-400 mb-6 text-center max-w-xs">
+                    Start a conversation. Ask this agent to run an analysis, draft content, or review your site.
+                  </div>
+                  <div className="flex flex-wrap gap-2 justify-center max-w-sm">
+                    {currentAgent.id === 'seo' ? (
+                      <>
+                        <button onClick={() => { setChatInput('Run a site audit'); }} className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Run a site audit</button>
+                        <button onClick={() => { setChatInput('Find content gaps'); }} className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Find content gaps</button>
+                        <button onClick={() => { setChatInput('Check Core Web Vitals'); }} className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Check Core Web Vitals</button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => { setChatInput('Get started'); }} className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">Get started</button>
+                        <button onClick={() => { setChatInput('What can you do?'); }} className="bg-gray-50 border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg text-[12px] font-medium hover:bg-gray-100">What can you do?</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {chatMessages.map((msg, i) => (
+                    <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap ${
+                        msg.role === 'user'
+                          ? 'bg-[#d92d78] text-white rounded-br-sm'
+                          : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                      }`}>
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+                  {chatTyping && (
+                    <div className="flex justify-start">
+                      <div className="bg-gray-100 text-gray-500 px-4 py-2.5 rounded-2xl rounded-bl-sm text-[13px] flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                        <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={chatMessagesEndRef} />
+                </div>
+              )}
             </div>
 
             <div className="px-6 py-4 bg-white border-t border-gray-100">
@@ -903,11 +1083,23 @@ const AgentsLayout = () => {
                 <span className="flex items-center gap-1.5"><ChartBarIcon className="w-3.5 h-3.5" /> Memory</span>
               </div>
               <div className="border border-gray-200 rounded-xl bg-white flex items-center p-1.5 shadow-sm focus-within:ring-1 focus-within:ring-[#d92d78] focus-within:border-[#d92d78]">
-                <input type="text" placeholder={`Message ${currentAgent.name}...`} className="flex-1 bg-transparent border-none focus:outline-none px-3 text-[14px]" />
+                <input
+                  type="text"
+                  placeholder={`Message ${currentAgent.name}...`}
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
+                  disabled={chatTyping}
+                  className="flex-1 bg-transparent border-none focus:outline-none px-3 text-[14px] disabled:opacity-60"
+                />
                 <div className="flex items-center gap-3 text-[12px] text-gray-400 mr-2 font-medium">
                   Slash commands
                 </div>
-                <button className="bg-[#f3b5ce] text-white p-2 rounded-lg cursor-not-allowed">
+                <button
+                  onClick={handleSendChat}
+                  disabled={!chatInput.trim() || chatTyping}
+                  className="bg-[#d92d78] hover:bg-[#c2185b] text-white p-2 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
                   <PaperAirplaneIcon className="w-4 h-4" />
                 </button>
               </div>
@@ -925,6 +1117,8 @@ const AgentsLayout = () => {
                 schedule={seoSchedule}
                 onSaveSiteConfig={(cfg) => dispatch(doSaveSiteConfig(cfg))}
                 onSaveSchedule={(sch) => dispatch(doSaveSchedule(sch))}
+                webhookUrl={webhookUrl}
+                projectList={projectList}
               />
             )}
           </div>
@@ -962,111 +1156,186 @@ const AgentsLayout = () => {
           </div>
         </div>
 
+        {/* Execution progress bar — shown while analysis is running */}
+        {currentExecution && (currentExecution.status === 'RUNNING' || currentExecution.status === 'QUEUED') && (
+          <div className="px-5 py-3 border-b border-gray-100 bg-white">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[12px] font-medium text-gray-700 flex items-center gap-1.5">
+                <ArrowPathIcon className="w-3.5 h-3.5 animate-spin text-[#d92d78]" />
+                {currentExecution.currentStep || 'Analysis in progress…'}
+              </span>
+              <span className="text-[11px] font-bold text-gray-500">{currentExecution.progress ?? 0}%</span>
+            </div>
+            <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-[#d92d78] to-pink-400 h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${currentExecution.progress ?? 0}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Execution error banner */}
+        {currentExecution && (currentExecution.status === 'FAILED' || currentExecution.status === 'PARTIAL') && (
+          <div className={`px-5 py-2.5 border-b flex items-center gap-2 text-[12px] font-medium ${currentExecution.status === 'FAILED' ? 'bg-red-50 border-red-100 text-red-700' : 'bg-orange-50 border-orange-100 text-orange-700'}`}>
+            <ExclamationCircleIcon className="w-4 h-4 shrink-0" />
+            {currentExecution.status === 'FAILED'
+              ? `Analysis failed${currentExecution.errorMessage ? ` — ${currentExecution.errorMessage}` : '. Check site config and try again.'}`
+              : 'Analysis completed with partial data — some crawl steps encountered errors.'}
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto p-6 bg-[#fcfcfc] scrollbar-hide">
           {selectedOutputTab === 'report' && (
             seoLoading ? (
               <div className="flex items-center justify-center h-48 text-gray-400 text-[13px]">
                 <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading report…
               </div>
-            ) : seoReport ? (
+            ) : displayedReport ? (
               <div className="space-y-4">
+                {/* Report history dropdown */}
+                {reportList.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <label className="text-[11px] font-bold text-gray-500 uppercase tracking-wider shrink-0">Report</label>
+                    <select
+                      value={selectedReportId || ''}
+                      onChange={e => handleSelectReport(e.target.value)}
+                      className="flex-1 px-2.5 py-1.5 bg-white border border-gray-200 rounded-lg text-[12px] text-gray-800 focus:outline-none focus:border-[#d92d78] focus:ring-1 focus:ring-[#d92d78]"
+                    >
+                      <option value="">Latest report</option>
+                      {reportList.map(r => (
+                        <option key={r.id} value={r.id}>
+                          {r.generatedAt ? new Date(r.generatedAt).toLocaleString('en', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : `Report #${r.id}`}
+                          {r.healthScore != null ? ` · Score ${r.healthScore}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {/* Header row */}
                 <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-5">
                   <div className="flex items-center gap-3 mb-3">
-                    {seoReport.healthScore != null && (
-                      <span className={`px-3 py-1 rounded-full font-bold text-white text-[13px] ${seoReport.healthScore >= 70 ? 'bg-green-500' : seoReport.healthScore >= 40 ? 'bg-orange-400' : 'bg-red-500'}`}>
-                        Score {seoReport.healthScore}
+                    {displayedReport.healthScore != null && (
+                      <span className={`px-3 py-1 rounded-full font-bold text-white text-[13px] ${displayedReport.healthScore >= 70 ? 'bg-green-500' : displayedReport.healthScore >= 40 ? 'bg-orange-400' : 'bg-red-500'}`}>
+                        Score {displayedReport.healthScore}
                       </span>
                     )}
                     <div className="text-[15px] font-bold text-gray-900">SEO Health Report</div>
                   </div>
                   <div className="text-[12px] text-gray-400 font-medium">
-                    {seoReport.generatedAt ? `Generated ${new Date(seoReport.generatedAt).toLocaleString()}` : ''}
-                    {seoReport.triggerType ? ` · ${seoReport.triggerType.toLowerCase()}` : ''}
+                    {displayedReport.generatedAt ? `Generated ${new Date(displayedReport.generatedAt).toLocaleString()}` : ''}
+                    {displayedReport.triggerType ? ` · ${displayedReport.triggerType.toLowerCase()}` : ''}
                   </div>
                 </div>
 
                 {/* Stat cards */}
                 <div className="grid grid-cols-3 gap-3">
                   <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-center">
-                    <div className="text-2xl font-bold text-gray-900">{seoReport.totalPagesCrawled ?? '—'}</div>
+                    <div className="text-2xl font-bold text-gray-900">{displayedReport.totalPagesCrawled ?? '—'}</div>
                     <div className="text-[11px] text-gray-500 mt-1 font-medium">Pages crawled</div>
                   </div>
                   <div className="bg-white border border-rose-100 rounded-xl p-4 shadow-sm text-center">
-                    <div className="text-2xl font-bold text-rose-600">{seoReport.newIssuesCount ?? '—'}</div>
+                    <div className="text-2xl font-bold text-rose-600">{displayedReport.newIssuesCount ?? '—'}</div>
                     <div className="text-[11px] text-gray-500 mt-1 font-medium">New issues</div>
                   </div>
                   <div className="bg-white border border-green-100 rounded-xl p-4 shadow-sm text-center">
-                    <div className="text-2xl font-bold text-green-600">{seoReport.totalIssuesResolved ?? '—'}</div>
+                    <div className="text-2xl font-bold text-green-600">{displayedReport.totalIssuesResolved ?? '—'}</div>
                     <div className="text-[11px] text-gray-500 mt-1 font-medium">Fixed</div>
                   </div>
                 </div>
 
                 {/* Issue breakdown */}
-                {seoReport.issueBreakdown && (
+                {displayedReport.issueBreakdown && (
                   <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
                     <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-3">Issue breakdown</div>
                     <div className="flex gap-4">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
-                        <span className="text-[13px] font-bold text-gray-900">{seoReport.issueBreakdown.CRITICAL}</span>
+                        <span className="text-[13px] font-bold text-gray-900">{displayedReport.issueBreakdown.CRITICAL}</span>
                         <span className="text-[12px] text-gray-500">Critical</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-orange-400 shrink-0"></span>
-                        <span className="text-[13px] font-bold text-gray-900">{seoReport.issueBreakdown.WARNING}</span>
+                        <span className="text-[13px] font-bold text-gray-900">{displayedReport.issueBreakdown.WARNING}</span>
                         <span className="text-[12px] text-gray-500">Warning</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
-                        <span className="text-[13px] font-bold text-gray-900">{seoReport.issueBreakdown.INFO}</span>
+                        <span className="text-[13px] font-bold text-gray-900">{displayedReport.issueBreakdown.INFO}</span>
                         <span className="text-[12px] text-gray-500">Info</span>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* AI summary — from reportSummaryJSON */}
-                {seoReport.reportSummaryJSON?.executiveSummary && (
-                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-                    <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-2">AI Summary</div>
-                    <p className="text-[13px] text-gray-800 leading-relaxed">{seoReport.reportSummaryJSON.executiveSummary}</p>
-                  </div>
-                )}
-
-                {/* Prioritized issues from AI */}
-                {seoReport.reportSummaryJSON?.prioritizedIssues?.length > 0 && (
-                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-                    <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-3">Prioritized Issues</div>
-                    <div className="space-y-2">
-                      {seoReport.reportSummaryJSON.prioritizedIssues.map((issue, i) => (
-                        <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                          <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
-                            issue.priority === 'high' || issue.priority === 'critical'
-                              ? 'bg-rose-100 text-rose-700 border border-rose-200'
-                              : issue.priority === 'medium'
-                              ? 'bg-orange-100 text-orange-700 border border-orange-200'
-                              : 'bg-gray-100 text-gray-600 border border-gray-200'
-                          }`}>{issue.priority || 'low'}</span>
-                          <div>
-                            <div className="text-[13px] font-semibold text-gray-900">{issue.title || issue.issue}</div>
-                            {issue.description && <div className="text-[12px] text-gray-500 mt-0.5">{issue.description}</div>}
-                          </div>
-                        </div>
-                      ))}
+                {/* AI summary — reportSummaryJSON is a JSON string; parse it */}
+                {(() => {
+                  let parsedSummary = null;
+                  try { parsedSummary = JSON.parse(displayedReport.reportSummaryJSON); } catch {}
+                  return parsedSummary?.summary ? (
+                    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
+                      <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-2">AI Summary</div>
+                      <p className="text-[13px] text-gray-800 leading-relaxed">{parsedSummary.summary}</p>
                     </div>
-                  </div>
-                )}
+                  ) : null;
+                })()}
 
-                {/* Recommendations */}
-                {seoReport.reportSummaryJSON?.recommendations?.length > 0 && (
+                {/* Issues from this report (loaded via getReport) */}
+                {displayedReport.issues?.length > 0 && (
                   <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
-                    <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-3">Recommendations</div>
-                    <ol className="list-decimal pl-4 space-y-2 text-[13px] text-gray-800 marker:text-gray-500">
-                      {seoReport.reportSummaryJSON.recommendations.map((rec, i) => (
-                        <li key={i}>{typeof rec === 'string' ? rec : rec.text || rec.recommendation}</li>
-                      ))}
-                    </ol>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase">
+                        Issues · {displayedReport.issues.length}
+                      </div>
+                      <div className="flex gap-1">
+                        {['ALL', 'CRITICAL', 'WARNING', 'INFO'].map(f => (
+                          <button
+                            key={f}
+                            onClick={() => setIssueFilter(f)}
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase transition-colors ${issueFilter === f
+                              ? f === 'CRITICAL' ? 'bg-rose-600 text-white'
+                              : f === 'WARNING' ? 'bg-orange-500 text-white'
+                              : f === 'INFO' ? 'bg-blue-500 text-white'
+                              : 'bg-gray-900 text-white'
+                              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                          >{f}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {displayedReport.issues
+                        .filter(issue => issueFilter === 'ALL' || issue.severity === issueFilter)
+                        .map((issue, i) => {
+                          let detail = null;
+                          try { detail = JSON.parse(issue.issueDetail); } catch {}
+                          return (
+                            <div key={issue.id || i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                              <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
+                                issue.severity === 'CRITICAL'
+                                  ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                  : issue.severity === 'WARNING'
+                                  ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                                  : 'bg-blue-50 text-blue-600 border border-blue-100'
+                              }`}>{issue.severity}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-[13px] font-semibold text-gray-900 capitalize">
+                                  {issue.issueType?.replace(/_/g, ' ')}
+                                </div>
+                                <div className="text-[11px] text-gray-400 truncate mt-0.5">{issue.pageURL}</div>
+                                {detail?.recommendedFix && (
+                                  <div className="text-[11px] text-gray-500 mt-1">{detail.recommendedFix}</div>
+                                )}
+                              </div>
+                              {issue.affooTaskID && (
+                                <span className="text-[11px] font-medium text-gray-500 shrink-0">
+                                  #{issue.affooTaskID}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1245,7 +1514,7 @@ const AgentsLayout = () => {
                 </div>
               ) : (
                 seoExecutions.map((exec, i) => (
-                  <div key={exec.executionId || i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between group hover:border-pink-300 transition-all cursor-pointer">
+                  <div key={exec.id || i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between group hover:border-pink-300 transition-all cursor-pointer">
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[10px] font-bold border ${
                         exec.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-100' :
@@ -1263,7 +1532,7 @@ const AgentsLayout = () => {
                         </div>
                         <div className="text-[11px] text-gray-500 mt-0.5 font-medium">
                           {exec.startedAt ? new Date(exec.startedAt).toLocaleString() : '—'}
-                          {exec.siteUrl ? ` · ${exec.siteUrl}` : ''}
+                          {exec.siteURL ? ` · ${exec.siteURL}` : ''}
                         </div>
                       </div>
                     </div>
@@ -1330,6 +1599,9 @@ const AgentsLayout = () => {
         isOpen={isConfigureModalOpen}
         onClose={() => setIsConfigureModalOpen(false)}
         agent={currentAgent}
+        isEnabled={seoEnabled}
+        onToggleEnabled={handleToggleAgent}
+        agentToggling={agentToggling}
       />
     </div>
   );

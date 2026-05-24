@@ -148,6 +148,11 @@ export async function getSeoReport(reportId) {
   return data;
 }
 
+export async function getSeoReportList() {
+  const { data } = await axios.get(`${BASE}/agents/seo/reports`, { headers: headers() });
+  return data;
+}
+
 export async function getSeoReportIssues(reportId, params = {}) {
   const { data } = await axios.get(`${BASE}/agents/seo/reports/${reportId}/issues`, {
     headers: headers(),
@@ -223,6 +228,35 @@ export async function toggleTool(provider, isEnabled) {
   const { data } = await axios.put(
     `${BASE}/agents/seo/tools/${provider}/toggle`,
     { isEnabled },
+    { headers: headers() }
+  );
+  return data;
+}
+
+// ─── Agent Settings (Identity / Persona) ─────────────────────────────────────
+
+export async function getAgentSettings(agentType) {
+  const { data } = await axios.get(`${BASE}/agents/${agentType.toLowerCase()}/settings`, {
+    headers: headers(),
+  });
+  return data;
+}
+
+export async function saveAgentSettings(agentType, settings) {
+  const { data } = await axios.put(
+    `${BASE}/agents/${agentType.toLowerCase()}/settings`,
+    { settings },
+    { headers: headers() }
+  );
+  return data;
+}
+
+// ─── Agent Chat ───────────────────────────────────────────────────────────────
+
+export async function chatWithAgent(agentType, messages) {
+  const { data } = await axios.post(
+    `${BASE}/agents/${agentType.toLowerCase()}/chat`,
+    { messages },
     { headers: headers() }
   );
   return data;
