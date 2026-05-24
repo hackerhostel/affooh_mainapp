@@ -46,12 +46,14 @@ const Toggle = ({ checked, onChange }) => (
 // ─── Model Tab ───────────────────────────────────────────────────────────────
 
 const PROVIDER_MODELS = [
-  { provider: 'OPENAI', name: 'GPT-4o', modelId: 'gpt-4o', desc: 'Balanced reasoning, broad tool use.', badge: 'Recommended' },
-  { provider: 'OPENAI', name: 'GPT-4o-mini', modelId: 'gpt-4o-mini', desc: '10x cheaper. Good for routing & summarisation.', badge: 'Fast' },
-  { provider: 'ANTHROPIC', name: 'Claude Sonnet 4.5', modelId: 'claude-sonnet-4-5', desc: 'Strong long-form drafts.', badge: 'Long context' },
+  { provider: 'OPENAI', name: 'GPT-5', modelId: 'gpt-5', desc: 'Most powerful OpenAI model. Advanced reasoning & multimodal.', badge: 'Recommended' },
+  { provider: 'OPENAI', name: 'GPT-5 mini', modelId: 'gpt-5-mini', desc: 'Fast & affordable. Good for routing & summarisation.', badge: 'Fast' },
+  { provider: 'ANTHROPIC', name: 'Claude Opus 4.7', modelId: 'claude-opus-4-7', desc: 'Most powerful Claude. Best for complex & agentic tasks.', badge: 'Powerful' },
+  { provider: 'ANTHROPIC', name: 'Claude Sonnet 4.6', modelId: 'claude-sonnet-4-6', desc: 'Strong long-form drafts & complex reasoning.', badge: 'Long context' },
   { provider: 'ANTHROPIC', name: 'Claude Haiku 4.5', modelId: 'claude-haiku-4-5-20251001', desc: 'Snappy. Good for QA & validation.', badge: 'Fast' },
   { provider: 'LOCAL', name: 'Local / Ollama', modelId: '', desc: 'Your hardware, your data.', badge: 'On-prem' },
-  { provider: 'GOOGLE', name: 'Gemini 1.5 Pro', modelId: 'gemini-1.5-pro', desc: 'Strong code & math.', badge: '' },
+  { provider: 'GOOGLE', name: 'Gemini 3.5 Flash', modelId: 'gemini-3.5-flash', desc: 'Fast & affordable. Strong code & math.', badge: 'Fast' },
+  { provider: 'GOOGLE', name: 'Gemini 3.5 Pro', modelId: 'gemini-3.5-pro', desc: 'Most capable Gemini. Complex tasks & long context.', badge: '' },
 ];
 
 const ModelTab = ({ agentType }) => {
