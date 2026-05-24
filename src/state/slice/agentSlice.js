@@ -14,6 +14,10 @@ import {
   getAgentSettings,
   saveAgentSettings,
   chatWithAgent,
+  getSeoReportCode,
+  getSeoReportTable,
+  getSeoReportChart,
+  getSeoReportMap,
 } from '../../pages/agents/agentApi';
 
 // ─── Thunks ──────────────────────────────────────────────────────────────────
@@ -130,6 +134,38 @@ export const doSendChatMessage = createAsyncThunk(
   }
 );
 
+export const doGetReportCode = createAsyncThunk(
+  'agent/getReportCode',
+  async (reportId, { rejectWithValue }) => {
+    try { return await getSeoReportCode(reportId); }
+    catch (e) { return rejectWithValue(e?.response?.data?.error || e.message); }
+  }
+);
+
+export const doGetReportTable = createAsyncThunk(
+  'agent/getReportTable',
+  async (reportId, { rejectWithValue }) => {
+    try { return await getSeoReportTable(reportId); }
+    catch (e) { return rejectWithValue(e?.response?.data?.error || e.message); }
+  }
+);
+
+export const doGetReportChart = createAsyncThunk(
+  'agent/getReportChart',
+  async (reportId, { rejectWithValue }) => {
+    try { return await getSeoReportChart(reportId); }
+    catch (e) { return rejectWithValue(e?.response?.data?.error || e.message); }
+  }
+);
+
+export const doGetReportMap = createAsyncThunk(
+  'agent/getReportMap',
+  async (reportId, { rejectWithValue }) => {
+    try { return await getSeoReportMap(reportId); }
+    catch (e) { return rejectWithValue(e?.response?.data?.error || e.message); }
+  }
+);
+
 export const doLoadSeoData = createAsyncThunk(
   'agent/loadSeoData',
   async (_, { dispatch }) => {
@@ -141,11 +177,19 @@ export const doLoadSeoData = createAsyncThunk(
       dispatch(doGetExecutions()),
       dispatch(doGetReportList()),
     ]);
-    // Load latest report then fetch its full detail (includes issues array)
+    // Load latest report then fetch its full detail + output tabs
     const reportResult = await dispatch(doGetLatestReport());
     if (doGetLatestReport.fulfilled.match(reportResult)) {
       const reportId = reportResult.payload?.report?.id;
-      if (reportId) await dispatch(doGetReportById(reportId));
+      if (reportId) {
+        await Promise.allSettled([
+          dispatch(doGetReportById(reportId)),
+          dispatch(doGetReportCode(reportId)),
+          dispatch(doGetReportTable(reportId)),
+          dispatch(doGetReportChart(reportId)),
+          dispatch(doGetReportMap(reportId)),
+        ]);
+      }
     }
   }
 );
@@ -166,6 +210,10 @@ const agentSlice = createSlice({
     latestReport: null,
     reportDetail: null,
     reportList: [],
+    reportCode: null,     // { snippets: CodeSnippet[] }
+    reportTable: null,    // { columns, rows }
+    reportChart: null,    // { title, source, bars }
+    reportMap: null,      // { center, nodes }
     executions: [],
     currentExecution: null,
     agentIdentity: {},
@@ -289,6 +337,38 @@ const agentSlice = createSlice({
         state.error = action.payload;
       })
 
+      // getReportCode
+      .addCase(doGetReportCode.pending, (state) => { state.loading.reportCode = true; })
+      .addCase(doGetReportCode.fulfilled, (state, action) => {
+        state.loading.reportCode = false;
+        state.reportCode = action.payload ?? null;
+      })
+      .addCase(doGetReportCode.rejected, (state) => { state.loading.reportCode = false; })
+
+      // getReportTable
+      .addCase(doGetReportTable.pending, (state) => { state.loading.reportTable = true; })
+      .addCase(doGetReportTable.fulfilled, (state, action) => {
+        state.loading.reportTable = false;
+        state.reportTable = action.payload?.table ?? null;
+      })
+      .addCase(doGetReportTable.rejected, (state) => { state.loading.reportTable = false; })
+
+      // getReportChart
+      .addCase(doGetReportChart.pending, (state) => { state.loading.reportChart = true; })
+      .addCase(doGetReportChart.fulfilled, (state, action) => {
+        state.loading.reportChart = false;
+        state.reportChart = action.payload?.chart ?? null;
+      })
+      .addCase(doGetReportChart.rejected, (state) => { state.loading.reportChart = false; })
+
+      // getReportMap
+      .addCase(doGetReportMap.pending, (state) => { state.loading.reportMap = true; })
+      .addCase(doGetReportMap.fulfilled, (state, action) => {
+        state.loading.reportMap = false;
+        state.reportMap = action.payload?.map ?? null;
+      })
+      .addCase(doGetReportMap.rejected, (state) => { state.loading.reportMap = false; })
+
       // loadSeoData
       .addCase(doLoadSeoData.pending, (state) => { state.loading.initial = true; })
       .addCase(doLoadSeoData.fulfilled, (state) => { state.loading.initial = false; })
@@ -346,6 +426,10 @@ export const selectSeoSchedule = (s) => s.agent.seoSchedule;
 export const selectLatestReport = (s) => s.agent.latestReport;
 export const selectReportDetail = (s) => s.agent.reportDetail;
 export const selectReportList = (s) => s.agent.reportList;
+export const selectReportCode = (s) => s.agent.reportCode;
+export const selectReportTable = (s) => s.agent.reportTable;
+export const selectReportChart = (s) => s.agent.reportChart;
+export const selectReportMap = (s) => s.agent.reportMap;
 export const selectExecutions = (s) => s.agent.executions;
 export const selectCurrentExecution = (s) => s.agent.currentExecution;
 export const selectAgentLoading = (s) => s.agent.loading;

@@ -22,6 +22,14 @@ import {
   selectAgentLoading,
   selectAgentError,
   selectChatMessages,
+  selectReportCode,
+  selectReportTable,
+  selectReportChart,
+  selectReportMap,
+  doGetReportCode,
+  doGetReportTable,
+  doGetReportChart,
+  doGetReportMap,
 } from '../../state/slice/agentSlice';
 import {
   doGetProjectFormData,
@@ -725,6 +733,10 @@ const AgentsLayout = () => {
   const seoReport = useSelector(selectLatestReport);
   const seoReportDetail = useSelector(selectReportDetail);
   const reportList = useSelector(selectReportList);
+  const reportCode = useSelector(selectReportCode);
+  const reportTable = useSelector(selectReportTable);
+  const reportChart = useSelector(selectReportChart);
+  const reportMap = useSelector(selectReportMap);
   const seoExecutions = useSelector(selectExecutions);
   const currentExecution = useSelector(selectCurrentExecution);
   const agentLoading = useSelector(selectAgentLoading);
@@ -762,7 +774,13 @@ const AgentsLayout = () => {
 
   const handleSelectReport = (reportId) => {
     setSelectedReportId(reportId || null);
-    if (reportId) dispatch(doGetReportById(reportId));
+    if (reportId) {
+      dispatch(doGetReportById(reportId));
+      dispatch(doGetReportCode(reportId));
+      dispatch(doGetReportTable(reportId));
+      dispatch(doGetReportChart(reportId));
+      dispatch(doGetReportMap(reportId));
+    }
   };
 
   // reportDetail always has { ...report, issues[] } — use it preferentially so issues render.
@@ -1403,103 +1421,175 @@ const AgentsLayout = () => {
             )
           )}
 
-          {selectedOutputTab === 'code' && (
-            <div className="bg-[#0f172a] rounded-xl overflow-hidden shadow-xl min-h-full flex flex-col">
-              <div className="px-4 py-3 bg-[#1e293b] border-b border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
-                  <span className="ml-2 text-[11px] font-mono text-gray-400 tracking-wider">schema-org · article</span>
-                </div>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] font-bold rounded-lg transition-colors border border-white/5">
-                  <DocumentDuplicateIcon className="w-3.5 h-3.5" /> Copy
-                </button>
+          {selectedOutputTab === 'code' && (() => {
+            const snippets = reportCode?.snippets ?? [];
+            const [activeSnippetIdx, setActiveSnippetIdx] = useState(0);
+            const snippet = snippets[activeSnippetIdx] ?? null;
+            const [copied, setCopied] = useState(false);
+            const handleCopy = () => {
+              if (!snippet) return;
+              navigator.clipboard.writeText(snippet.code).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              });
+            };
+            if (agentLoading.reportCode) return (
+              <div className="flex items-center justify-center h-48 text-gray-400 text-[13px]">
+                <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading code snippets…
               </div>
-              <div className="p-6 font-mono text-[13px] leading-relaxed text-blue-100 overflow-x-auto">
-                <pre>{`{
-  "@context": "https://schema.org",
-  "@type": "Article",
-  "headline": "Async standups for distributed teams",
-  "author": { "@type": "Organization", "name": "AffooH" },
-  "datePublished": "2026-05-20",
-  "keywords": [
-    "async standups",
-    "asynchronous daily",
-    "remote standups",
-    "distributed standup meeting"
-  ],
-  "about": {
-    "@type": "Thing",
-    "name": "Project management"
-  },
-  "wordCount": 2400,
-  "inLanguage": "en-US"
-}`}</pre>
+            );
+            if (!snippet) return (
+              <div className="flex flex-col items-center justify-center h-48 text-center">
+                <CodeBracketIcon className="w-10 h-10 text-gray-200 mb-3" />
+                <div className="text-[14px] font-semibold text-gray-500 mb-1">No code snippets yet</div>
+                <div className="text-[13px] text-gray-400">Run an analysis to generate fix snippets.</div>
               </div>
-            </div>
-          )}
-
-          {selectedOutputTab === 'table' && (
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden min-h-full flex flex-col">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-50/50 border-b border-gray-100">
-                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Keyword</th>
-                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">Vol</th>
-                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">KD</th>
-                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider">You</th>
-                    <th className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider text-green-600">Monday</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 text-[13px]">
-                  {[
-                    { kw: 'async standups', vol: '8,400', kd: '28', you: '—', comp: '3' },
-                    { kw: 'asynchronous daily standup', vol: '2,100', kd: '22', you: '—', comp: '5' },
-                    { kw: 'remote standup meeting', vol: '3,600', kd: '31', you: '62', comp: '2' },
-                    { kw: 'distributed standup', vol: '1,900', kd: '19', you: '—', comp: '7' },
-                    { kw: 'async daily update', vol: '880', kd: '14', you: '84', comp: '4' },
-                    { kw: 'standup template remote', vol: '1,300', kd: '24', you: '—', comp: '6' },
-                  ].map((row, i) => (
-                    <tr key={i} className="hover:bg-gray-50/50 transition-colors">
-                      <td className="px-4 py-3.5 font-medium text-gray-900 leading-tight">{row.kw}</td>
-                      <td className="px-4 py-3.5 text-gray-600 font-mono text-[12px]">{row.vol}</td>
-                      <td className="px-4 py-3.5 text-gray-600 font-mono text-[12px]">{row.kd}</td>
-                      <td className="px-4 py-3.5 text-orange-600 font-bold font-mono text-[12px]">{row.you}</td>
-                      <td className="px-4 py-3.5 text-green-600 font-bold font-mono text-[12px]">{row.comp}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {selectedOutputTab === 'chart' && (
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 min-h-full">
-              <div className="text-[15px] font-bold text-gray-900 mb-6">Monthly search volume by cluster</div>
-              <div className="space-y-5">
-                {[
-                  { label: 'Async standups', value: '8,400', width: '40%' },
-                  { label: 'Sprint planning', value: '14,200', width: '65%' },
-                  { label: 'RICE prioritisation', value: '6,100', width: '30%' },
-                  { label: 'OKR examples', value: '22,400', width: '90%' },
-                  { label: 'Roadmap viz', value: '4,800', width: '25%' },
-                  { label: 'Backlog grooming', value: '3,200', width: '18%' },
-                ].map((bar, i) => (
-                  <div key={i} className="flex items-center gap-4">
-                    <div className="w-32 text-[13px] font-medium text-gray-600 truncate">{bar.label}</div>
-                    <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden relative">
-                       <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-rose-400 rounded-full" style={{ width: bar.width }}></div>
-                    </div>
-                    <div className="w-16 text-right text-[12px] font-mono font-bold text-gray-900">{bar.value}</div>
+            );
+            return (
+              <div className="bg-[#0f172a] rounded-xl overflow-hidden shadow-xl min-h-full flex flex-col">
+                {/* Tab bar for multiple snippets */}
+                {snippets.length > 1 && (
+                  <div className="flex gap-1 px-4 pt-3 bg-[#0f172a] overflow-x-auto">
+                    {snippets.map((s, i) => (
+                      <button
+                        key={s.id}
+                        onClick={() => setActiveSnippetIdx(i)}
+                        className={`shrink-0 px-3 py-1.5 rounded-t-lg text-[11px] font-mono font-bold transition-colors border-b-2 ${
+                          i === activeSnippetIdx
+                            ? 'text-blue-300 border-blue-400 bg-white/5'
+                            : 'text-gray-500 border-transparent hover:text-gray-300'
+                        }`}
+                      >
+                        {s.type}
+                      </button>
+                    ))}
                   </div>
-                ))}
+                )}
+                <div className="px-4 py-3 bg-[#1e293b] border-b border-white/5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80"></div>
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/80"></div>
+                    <span className="ml-2 text-[11px] font-mono text-gray-400 tracking-wider">{snippet.label}</span>
+                  </div>
+                  <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] font-bold rounded-lg transition-colors border border-white/5"
+                  >
+                    <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+                <div className="p-6 font-mono text-[13px] leading-relaxed text-blue-100 overflow-x-auto flex-1">
+                  <pre className="whitespace-pre-wrap">{snippet.code}</pre>
+                </div>
               </div>
-              <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-400 font-medium italic">
-                 Source: ahrefs · US · last 12 mo
+            );
+          })()}
+
+          {selectedOutputTab === 'table' && (() => {
+            if (agentLoading.reportTable) return (
+              <div className="flex items-center justify-center h-48 text-gray-400 text-[13px]">
+                <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading table…
               </div>
-            </div>
-          )}
+            );
+            const columns = reportTable?.columns ?? [];
+            const rows = reportTable?.rows ?? [];
+            if (!rows.length) return (
+              <div className="flex flex-col items-center justify-center h-48 text-center">
+                <TableCellsIcon className="w-10 h-10 text-gray-200 mb-3" />
+                <div className="text-[14px] font-semibold text-gray-500 mb-1">No table data yet</div>
+                <div className="text-[13px] text-gray-400">Run an analysis to populate the page issues table.</div>
+              </div>
+            );
+            return (
+              <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden min-h-full flex flex-col">
+                <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Pages by issue count — top {rows.length}</span>
+                </div>
+                <div className="overflow-x-auto flex-1">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50/50 border-b border-gray-100">
+                        {columns.map(col => (
+                          <th key={col.key} className="px-4 py-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                            {col.label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 text-[13px]">
+                      {rows.map((row, i) => (
+                        <tr key={i} className="hover:bg-gray-50/50 transition-colors">
+                          <td className="px-4 py-3 font-medium text-gray-900 max-w-[200px] truncate" title={row.pageURL}>
+                            {row.pageURL}
+                          </td>
+                          <td className="px-4 py-3 text-gray-700 font-mono text-[12px] font-bold">{row.totalIssues}</td>
+                          <td className="px-4 py-3 font-mono text-[12px]">
+                            {row.critical > 0
+                              ? <span className="text-red-600 font-bold">{row.critical}</span>
+                              : <span className="text-gray-400">—</span>}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-[12px]">
+                            {row.warning > 0
+                              ? <span className="text-orange-500 font-bold">{row.warning}</span>
+                              : <span className="text-gray-400">—</span>}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-[12px] text-gray-500">{row.info || '—'}</td>
+                          <td className="px-4 py-3 font-mono text-[12px]">
+                            {row.perfScore != null
+                              ? <span className={row.perfScore >= 70 ? 'text-green-600 font-bold' : row.perfScore >= 40 ? 'text-orange-500 font-bold' : 'text-red-600 font-bold'}>{row.perfScore}</span>
+                              : <span className="text-gray-400">—</span>}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()}
+
+          {selectedOutputTab === 'chart' && (() => {
+            if (agentLoading.reportChart) return (
+              <div className="flex items-center justify-center h-48 text-gray-400 text-[13px]">
+                <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading chart…
+              </div>
+            );
+            const bars = reportChart?.bars ?? [];
+            if (!bars.length) return (
+              <div className="flex flex-col items-center justify-center h-48 text-center">
+                <ChartBarIcon className="w-10 h-10 text-gray-200 mb-3" />
+                <div className="text-[14px] font-semibold text-gray-500 mb-1">No chart data yet</div>
+                <div className="text-[13px] text-gray-400">Run an analysis to generate the issue breakdown chart.</div>
+              </div>
+            );
+            const maxVal = Math.max(...bars.map(b => b.value), 1);
+            return (
+              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 min-h-full">
+                <div className="text-[15px] font-bold text-gray-900 mb-6">{reportChart?.title ?? 'Issues by type'}</div>
+                <div className="space-y-5">
+                  {bars.map((bar, i) => (
+                    <div key={i} className="flex items-center gap-4">
+                      <div className="w-36 text-[13px] font-medium text-gray-600 truncate shrink-0" title={bar.label}>{bar.label}</div>
+                      <div className="flex-1 bg-gray-100 rounded-full h-4 overflow-hidden relative">
+                        <div
+                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-pink-500 to-rose-400 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.round((bar.value / maxVal) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="w-10 text-right text-[12px] font-mono font-bold text-gray-900 shrink-0">{bar.value}</div>
+                    </div>
+                  ))}
+                </div>
+                {reportChart?.source && (
+                  <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-400 font-medium italic">
+                    Source: {reportChart.source}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {selectedOutputTab === 'files' && (
             <div className="space-y-3 min-h-full">
@@ -1543,50 +1633,82 @@ const AgentsLayout = () => {
             </div>
           )}
 
-          {selectedOutputTab === 'map' && (
-            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 min-h-full flex flex-col items-center justify-center relative overflow-hidden">
-              <div className="relative w-full h-[400px] flex items-center justify-center">
-                {/* Connecting Lines (SVG) */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                  <line x1="50%" y1="50%" x2="25%" y2="25%" stroke="#cbd5e1" strokeWidth="1.5" />
-                  <line x1="50%" y1="50%" x2="50%" y2="20%" stroke="#cbd5e1" strokeWidth="1.5" />
-                  <line x1="50%" y1="50%" x2="75%" y2="25%" stroke="#cbd5e1" strokeWidth="1.5" />
-                  <line x1="50%" y1="50%" x2="25%" y2="75%" stroke="#cbd5e1" strokeWidth="1.5" />
-                  <line x1="50%" y1="50%" x2="50%" y2="80%" stroke="#cbd5e1" strokeWidth="1.5" />
-                  <line x1="50%" y1="50%" x2="75%" y2="75%" stroke="#cbd5e1" strokeWidth="1.5" />
-                </svg>
+          {selectedOutputTab === 'map' && (() => {
+            if (agentLoading.reportMap) return (
+              <div className="flex items-center justify-center h-48 text-gray-400 text-[13px]">
+                <ArrowPathIcon className="w-5 h-5 animate-spin mr-2" /> Loading site map…
+              </div>
+            );
+            const mapCenter = reportMap?.center ?? '';
+            const mapNodes = reportMap?.nodes ?? [];
+            if (!mapCenter && !mapNodes.length) return (
+              <div className="flex flex-col items-center justify-center h-48 text-center">
+                <MapIcon className="w-10 h-10 text-gray-200 mb-3" />
+                <div className="text-[14px] font-semibold text-gray-500 mb-1">No site map yet</div>
+                <div className="text-[13px] text-gray-400">Run an analysis to see the site content clusters.</div>
+              </div>
+            );
+            // Lay nodes out in a circle around the center
+            const angleStep = mapNodes.length > 0 ? (2 * Math.PI) / mapNodes.length : 0;
+            const R = 38; // % radius
+            const nodePositions = mapNodes.map((_, i) => {
+              const angle = i * angleStep - Math.PI / 2;
+              return {
+                x: 50 + R * Math.cos(angle),
+                y: 50 + R * Math.sin(angle),
+              };
+            });
+            return (
+              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 min-h-full flex flex-col items-center justify-center relative overflow-hidden">
+                <div className="relative w-full h-[420px] flex items-center justify-center select-none">
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none">
+                    {nodePositions.map((pos, i) => (
+                      <line
+                        key={i}
+                        x1="50%" y1="50%"
+                        x2={`${pos.x}%`} y2={`${pos.y}%`}
+                        stroke="#cbd5e1" strokeWidth="1.5"
+                      />
+                    ))}
+                  </svg>
 
-                {/* Center Node */}
-                <div className="z-10 bg-[#e65c4f] text-white px-6 py-3 rounded-xl font-bold text-[15px] shadow-lg shadow-red-100 border border-red-400">
-                  Async standups
-                </div>
+                  {/* Center node */}
+                  <div className="z-10 bg-[#d92d78] text-white px-6 py-3 rounded-xl font-bold text-[14px] shadow-lg border border-pink-400 text-center max-w-[160px] truncate">
+                    {mapCenter}
+                  </div>
 
-                {/* Satellite Nodes */}
-                <div className="absolute top-[20%] left-[20%] -translate-x-1/2 -translate-y-1/2 bg-white border border-gray-200 px-5 py-2 rounded-xl text-[13px] font-semibold text-gray-700 shadow-sm hover:border-pink-300 transition-colors cursor-grab active:cursor-grabbing">
-                  Definition
+                  {/* Satellite nodes */}
+                  {mapNodes.map((node, i) => {
+                    const pos = nodePositions[i];
+                    const hasIssues = node.issueCount > 0;
+                    return (
+                      <div
+                        key={node.id}
+                        className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-xl text-[12px] font-semibold shadow-sm border transition-colors cursor-default ${
+                          hasIssues
+                            ? 'bg-red-50 border-red-200 text-red-700 hover:border-red-400'
+                            : 'bg-white border-gray-200 text-gray-700 hover:border-pink-300'
+                        }`}
+                        style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                        title={`${node.label} · ${node.issueCount} issue${node.issueCount !== 1 ? 's' : ''} across ${node.pageCount} page${node.pageCount !== 1 ? 's' : ''}`}
+                      >
+                        {node.label}
+                        {hasIssues && (
+                          <span className="ml-1.5 inline-flex items-center justify-center w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold">
+                            {node.issueCount > 99 ? '99+' : node.issueCount}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="absolute top-[15%] left-[50%] -translate-x-1/2 -translate-y-1/2 bg-white border border-gray-200 px-5 py-2 rounded-xl text-[13px] font-semibold text-gray-700 shadow-sm hover:border-pink-300 transition-colors cursor-grab active:cursor-grabbing">
-                  Why it works
-                </div>
-                <div className="absolute top-[20%] right-[20%] translate-x-1/2 -translate-y-1/2 bg-white border border-gray-200 px-5 py-2 rounded-xl text-[13px] font-semibold text-gray-700 shadow-sm hover:border-pink-300 transition-colors cursor-grab active:cursor-grabbing">
-                  Tools & rituals
-                </div>
-                <div className="absolute bottom-[20%] left-[20%] -translate-x-1/2 translate-y-1/2 bg-white border border-gray-200 px-5 py-2 rounded-xl text-[13px] font-semibold text-gray-700 shadow-sm hover:border-pink-300 transition-colors cursor-grab active:cursor-grabbing">
-                  Templates
-                </div>
-                <div className="absolute bottom-[15%] left-[50%] -translate-x-1/2 translate-y-1/2 bg-white border border-gray-200 px-5 py-2 rounded-xl text-[13px] font-semibold text-gray-700 shadow-sm hover:border-pink-300 transition-colors cursor-grab active:cursor-grabbing">
-                  Pitfalls
-                </div>
-                <div className="absolute bottom-[20%] right-[20%] translate-x-1/2 translate-y-1/2 bg-white border border-gray-200 px-5 py-2 rounded-xl text-[13px] font-semibold text-gray-700 shadow-sm hover:border-pink-300 transition-colors cursor-grab active:cursor-grabbing">
-                  Examples
+                <div className="absolute bottom-6 left-8 text-[11px] text-gray-400 font-medium">
+                  Site sections · issue counts from latest report.
+                  <span className="ml-1 text-red-400 font-semibold">Red = has issues</span>
                 </div>
               </div>
-
-              <div className="absolute bottom-8 left-8 text-[12px] text-gray-400 font-medium">
-                Outline draft — drag nodes to reorder. <span className="text-[#d92d78] cursor-pointer hover:underline">Open editor</span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
