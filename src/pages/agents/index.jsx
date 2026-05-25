@@ -457,7 +457,7 @@ const ApiConfigSection = () => {
         setCreds(raw);
         if (raw['GSC']?.isConnected) loadGSCProperties();
       })
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, [loadGSCProperties]);
 
@@ -495,7 +495,7 @@ const ApiConfigSection = () => {
 
   const handleDfsRemoveConfirmed = async () => {
     setDfsRemoveConfirmOpen(false);
-    await deleteCredential('dataforseo').catch(() => {});
+    await deleteCredential('dataforseo').catch(() => { });
     setCreds(p => ({ ...p, DATAFORSEO: { isConnected: false } }));
     setDfsFeedback(null);
   };
@@ -505,17 +505,43 @@ const ApiConfigSection = () => {
       const { authURL } = await getGSCAuthURL();
       const popup = window.open(authURL, 'gsc-oauth', 'width=600,height=700');
       if (!popup) { window.open(authURL, '_blank'); return; }
-      const timer = setInterval(async () => {
+
+      let timer;
+      let messageReceived = false;
+
+      const onMessage = (event) => {
+        // Accept messages from same origin (production) or any origin (localhost dev)
+        if (event.data?.type !== 'GSC_OAUTH_CALLBACK') return;
+        messageReceived = true;
+        window.removeEventListener('message', onMessage);
+        clearInterval(timer);
+        if (event.data.status === 'success') {
+          setCreds(p => ({ ...p, GSC: { isConnected: true } }));
+          loadGSCProperties();
+        }
+      };
+      window.addEventListener('message', onMessage);
+
+      timer = setInterval(() => {
         if (popup.closed) {
           clearInterval(timer);
-          const data = await getCredentials().catch(() => null);
-          if (data?.credentials?.GSC?.isConnected) {
-            setCreds(p => ({ ...p, GSC: { isConnected: true } }));
-            loadGSCProperties();
+          window.removeEventListener('message', onMessage);
+          // Fallback: if postMessage was never received (e.g. localhost cross-origin),
+          // re-fetch credentials from the API to get the real connected state
+          if (!messageReceived) {
+            getCredentials()
+              .then(data => {
+                const raw = data.credentials || {};
+                if (raw['GSC']?.isConnected) {
+                  setCreds(p => ({ ...p, GSC: { isConnected: true } }));
+                  loadGSCProperties();
+                }
+              })
+              .catch(() => { });
           }
         }
       }, 600);
-    } catch (_) {}
+    } catch (_) { }
   };
 
   const handleGSCDisconnect = () => {
@@ -524,7 +550,7 @@ const ApiConfigSection = () => {
 
   const handleGSCDisconnectConfirmed = async () => {
     setGscDisconnectConfirmOpen(false);
-    await disconnectGSC().catch(() => {});
+    await disconnectGSC().catch(() => { });
     setCreds(p => ({ ...p, GSC: { isConnected: false } }));
     setGscProperties(null);
     setGscSelectedProperty('');
@@ -532,7 +558,7 @@ const ApiConfigSection = () => {
 
   const handleGSCPropertyChange = async (property) => {
     setGscSelectedProperty(property);
-    saveGSCProperty(property).catch(() => {});
+    saveGSCProperty(property).catch(() => { });
   };
 
   const handlePsSave = async () => {
@@ -568,7 +594,7 @@ const ApiConfigSection = () => {
 
   const handlePsRemoveConfirmed = async () => {
     setPsRemoveConfirmOpen(false);
-    await deleteCredential('pagespeed').catch(() => {});
+    await deleteCredential('pagespeed').catch(() => { });
     setCreds(p => ({ ...p, PAGESPEED: { isConnected: false } }));
     setPsFeedback(null);
   };
@@ -785,7 +811,7 @@ const TasksOutputTab = ({ issues, projectID }) => {
     if (!projectID) return;
     axios.get(`/projects/${projectID}/sprints`)
       .then(r => setSprintList(r.data?.body?.sprints || []))
-      .catch(() => {});
+      .catch(() => { });
   }, [projectID]);
 
   const eligible = (issues || []).filter(i => !i.affooTaskID && i.severity !== 'INFO');
@@ -922,13 +948,12 @@ const TasksOutputTab = ({ issues, projectID }) => {
                 />
               )}
             </div>
-            <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
-              issue.severity === 'CRITICAL'
+            <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${issue.severity === 'CRITICAL'
                 ? 'bg-rose-100 text-rose-700 border border-rose-200'
                 : issue.severity === 'WARNING'
-                ? 'bg-orange-100 text-orange-700 border border-orange-200'
-                : 'bg-blue-50 text-blue-600 border border-blue-100'
-            }`}>{issue.severity}</span>
+                  ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                  : 'bg-blue-50 text-blue-600 border border-blue-100'
+              }`}>{issue.severity}</span>
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold text-gray-900 capitalize">
                 {issue.issueType?.replace(/_/g, ' ')}
@@ -1063,13 +1088,13 @@ const AgentsLayout = () => {
                 setTimeout(() => dispatch(doLoadSeoData()), 1500);
               }
             }
-          } catch (_) {}
+          } catch (_) { }
         };
 
         ws.onclose = () => {
           reconnectTimer = setTimeout(connect, 5000);
         };
-      } catch (_) {}
+      } catch (_) { }
     };
 
     connect();
@@ -1172,8 +1197,8 @@ const AgentsLayout = () => {
         <div className="flex-1 overflow-y-auto px-2 space-y-0.5">
           {/* Agent Items */}
           {agents.map(agent => (
-            <div 
-              key={agent.id} 
+            <div
+              key={agent.id}
               onClick={() => setSelectedAgent(agent.id)}
               className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition-all ${selectedAgent === agent.id ? 'bg-white shadow-sm border border-gray-200' : 'hover:bg-gray-100 border border-transparent'}`}
             >
@@ -1311,11 +1336,10 @@ const AgentsLayout = () => {
                 <div className="space-y-4">
                   {chatMessages.map((msg, i) => (
                     <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap ${
-                        msg.role === 'user'
+                      <div className={`max-w-[80%] px-4 py-2.5 rounded-2xl text-[13px] leading-relaxed whitespace-pre-wrap ${msg.role === 'user'
                           ? 'bg-[#d92d78] text-white rounded-br-sm'
                           : 'bg-gray-100 text-gray-800 rounded-bl-sm'
-                      }`}>
+                        }`}>
                         {msg.content}
                       </div>
                     </div>
@@ -1411,7 +1435,7 @@ const AgentsLayout = () => {
             {outputTabs.map(tab => {
               const Icon = tab.icon;
               return (
-                <button 
+                <button
                   key={tab.id}
                   onClick={() => setSelectedOutputTab(tab.id)}
                   className={`flex items-center gap-1.5 pb-2.5 border-b-2 transition-all whitespace-nowrap shrink-0 ${selectedOutputTab === tab.id ? 'border-gray-800 text-gray-800' : 'border-transparent hover:text-gray-700'}`}
@@ -1539,7 +1563,7 @@ const AgentsLayout = () => {
                 {/* AI summary — reportSummaryJSON is a JSON string; parse it */}
                 {(() => {
                   let parsedSummary = null;
-                  try { parsedSummary = JSON.parse(displayedReport.reportSummaryJSON); } catch {}
+                  try { parsedSummary = JSON.parse(displayedReport.reportSummaryJSON); } catch { }
                   return parsedSummary?.summary ? (
                     <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5">
                       <div className="text-[11px] font-bold text-gray-500 tracking-wider uppercase mb-2">AI Summary</div>
@@ -1562,9 +1586,9 @@ const AgentsLayout = () => {
                             onClick={() => setIssueFilter(f)}
                             className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase transition-colors ${issueFilter === f
                               ? f === 'CRITICAL' ? 'bg-rose-600 text-white'
-                              : f === 'WARNING' ? 'bg-orange-500 text-white'
-                              : f === 'INFO' ? 'bg-blue-500 text-white'
-                              : 'bg-gray-900 text-white'
+                                : f === 'WARNING' ? 'bg-orange-500 text-white'
+                                  : f === 'INFO' ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-900 text-white'
                               : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
                           >{f}</button>
                         ))}
@@ -1575,16 +1599,15 @@ const AgentsLayout = () => {
                         .filter(issue => issueFilter === 'ALL' || issue.severity === issueFilter)
                         .map((issue, i) => {
                           let detail = null;
-                          try { detail = JSON.parse(issue.issueDetail); } catch {}
+                          try { detail = JSON.parse(issue.issueDetail); } catch { }
                           return (
                             <div key={issue.id || i} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                              <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${
-                                issue.severity === 'CRITICAL'
+                              <span className={`mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase shrink-0 ${issue.severity === 'CRITICAL'
                                   ? 'bg-rose-100 text-rose-700 border border-rose-200'
                                   : issue.severity === 'WARNING'
-                                  ? 'bg-orange-100 text-orange-700 border border-orange-200'
-                                  : 'bg-blue-50 text-blue-600 border border-blue-100'
-                              }`}>{issue.severity}</span>
+                                    ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                                    : 'bg-blue-50 text-blue-600 border border-blue-100'
+                                }`}>{issue.severity}</span>
                               <div className="flex-1 min-w-0">
                                 <div className="text-[13px] font-semibold text-gray-900 capitalize">
                                   {issue.issueType?.replace(/_/g, ' ')}
@@ -1668,11 +1691,10 @@ const AgentsLayout = () => {
                       <button
                         key={s.id}
                         onClick={() => setActiveSnippetIdx(i)}
-                        className={`shrink-0 px-3 py-1.5 rounded-t-lg text-[11px] font-mono font-bold transition-colors border-b-2 ${
-                          i === activeSnippetIdx
+                        className={`shrink-0 px-3 py-1.5 rounded-t-lg text-[11px] font-mono font-bold transition-colors border-b-2 ${i === activeSnippetIdx
                             ? 'text-blue-300 border-blue-400 bg-white/5'
                             : 'text-gray-500 border-transparent hover:text-gray-300'
-                        }`}
+                          }`}
                       >
                         {s.type}
                       </button>
@@ -1820,13 +1842,12 @@ const AgentsLayout = () => {
                 seoExecutions.map((exec, i) => (
                   <div key={exec.id || i} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm flex items-center justify-between group hover:border-pink-300 transition-all cursor-pointer">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[10px] font-bold border ${
-                        exec.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-100' :
-                        exec.status === 'FAILED' ? 'bg-red-50 text-red-600 border-red-100' :
-                        exec.status === 'PARTIAL' ? 'bg-orange-50 text-orange-600 border-orange-100' :
-                        exec.status === 'RUNNING' ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                        'bg-gray-50 text-gray-500 border-gray-200'
-                      }`}>
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-[10px] font-bold border ${exec.status === 'COMPLETED' ? 'bg-green-50 text-green-700 border-green-100' :
+                          exec.status === 'FAILED' ? 'bg-red-50 text-red-600 border-red-100' :
+                            exec.status === 'PARTIAL' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                              exec.status === 'RUNNING' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                'bg-gray-50 text-gray-500 border-gray-200'
+                        }`}>
                         {exec.status === 'COMPLETED' ? 'DONE' : exec.status === 'FAILED' ? 'FAIL' : exec.status === 'PARTIAL' ? 'PART' : exec.status === 'RUNNING' ? 'RUN' : 'PEND'}
                       </div>
                       <div>
@@ -1898,11 +1919,10 @@ const AgentsLayout = () => {
                     return (
                       <div
                         key={node.id}
-                        className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-xl text-[12px] font-semibold shadow-sm border transition-colors cursor-default ${
-                          hasIssues
+                        className={`absolute z-10 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-xl text-[12px] font-semibold shadow-sm border transition-colors cursor-default ${hasIssues
                             ? 'bg-red-50 border-red-200 text-red-700 hover:border-red-400'
                             : 'bg-white border-gray-200 text-gray-700 hover:border-pink-300'
-                        }`}
+                          }`}
                         style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                         title={`${node.label} · ${node.issueCount} issue${node.issueCount !== 1 ? 's' : ''} across ${node.pageCount} page${node.pageCount !== 1 ? 's' : ''}`}
                       >

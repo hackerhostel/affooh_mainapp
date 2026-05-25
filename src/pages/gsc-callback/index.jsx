@@ -3,19 +3,17 @@ import { useEffect } from 'react';
 const GSCCallback = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const state = params.get('state');
-    const error = params.get('error');
+    const status = params.get('status');
 
     if (window.opener) {
       window.opener.postMessage(
-        { type: 'GSC_OAUTH_CALLBACK', code, state, error },
+        { type: 'GSC_OAUTH_CALLBACK', status },
         window.location.origin
       );
       window.close();
     } else {
-      // Fallback: redirect to agents page if popup opener is gone
-      window.location.replace('/agents');
+      // Fallback: redirect back to agents page if popup opener is gone
+      window.location.replace('/agents/seo');
     }
   }, []);
 
