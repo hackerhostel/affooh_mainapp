@@ -4,6 +4,11 @@ const GSCCallback = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const status = params.get('status');
+    const message = params.get('message');
+
+    if (status === 'error' && message) {
+      alert("GSC Connection Failed: " + message);
+    }
 
     if (window.opener) {
       window.opener.postMessage(
